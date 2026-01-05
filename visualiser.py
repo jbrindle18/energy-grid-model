@@ -147,24 +147,44 @@ preset_neso2050 = (preset_value == "neso2050")
 # Initialize session state for slider values (default to Current UK values)
 if "solar_cap" not in st.session_state:
     st.session_state.solar_cap = 15.5
+if "solar_slider" not in st.session_state:
+    st.session_state.solar_slider = 15.5
 if "onshore_wind_cap" not in st.session_state:
     st.session_state.onshore_wind_cap = 14.8
+if "onshore_slider" not in st.session_state:
+    st.session_state.onshore_slider = 14.8
 if "offshore_wind_cap" not in st.session_state:
     st.session_state.offshore_wind_cap = 14.7
+if "offshore_slider" not in st.session_state:
+    st.session_state.offshore_slider = 14.7
 if "nuclear_cap" not in st.session_state:
     st.session_state.nuclear_cap = 6.5
+if "nuclear_slider" not in st.session_state:
+    st.session_state.nuclear_slider = 6.5
 if "biomass_cap" not in st.session_state:
     st.session_state.biomass_cap = 3.5
+if "biomass_slider" not in st.session_state:
+    st.session_state.biomass_slider = 3.5
 if "hydro_cap" not in st.session_state:
     st.session_state.hydro_cap = 1.9
+if "hydro_slider" not in st.session_state:
+    st.session_state.hydro_slider = 1.9
 if "interconnector_cap" not in st.session_state:
     st.session_state.interconnector_cap = 8.4
+if "interconnector_slider" not in st.session_state:
+    st.session_state.interconnector_slider = 8.4
 if "electrification" not in st.session_state:
     st.session_state.electrification = 1.0
+if "electrification_slider" not in st.session_state:
+    st.session_state.electrification_slider = 1.0
 if "gas_fuel_cost" not in st.session_state:
     st.session_state.gas_fuel_cost = 55.0
+if "gas_fuel_slider" not in st.session_state:
+    st.session_state.gas_fuel_slider = 55.0
 if "carbon_price" not in st.session_state:
     st.session_state.carbon_price = 60.0
+if "carbon_price_slider" not in st.session_state:
+    st.session_state.carbon_price_slider = 60.0
 
 # Track last selected preset to only apply when it changes
 if "last_selected_preset" not in st.session_state:
@@ -195,7 +215,9 @@ if st.session_state.last_selected_preset != selected_preset:
         st.session_state.electrification = 1.0
         st.session_state.electrification_slider = 1.0
         st.session_state.gas_fuel_cost = 55.0
+        st.session_state.gas_fuel_slider = 55.0
         st.session_state.carbon_price = 60.0
+        st.session_state.carbon_price_slider = 60.0
         st.rerun()
 
     elif preset_neso_dispatch:
@@ -220,7 +242,9 @@ if st.session_state.last_selected_preset != selected_preset:
         st.session_state.electrification = 1.2
         st.session_state.electrification_slider = 1.2
         st.session_state.gas_fuel_cost = 55.0
+        st.session_state.gas_fuel_slider = 55.0
         st.session_state.carbon_price = 60.0
+        st.session_state.carbon_price_slider = 60.0
         st.rerun()
 
     elif preset_neso2050:
@@ -245,7 +269,9 @@ if st.session_state.last_selected_preset != selected_preset:
         st.session_state.electrification = 1.8  # Higher electrification by 2050
         st.session_state.electrification_slider = 1.8
         st.session_state.gas_fuel_cost = 55.0
+        st.session_state.gas_fuel_slider = 55.0
         st.session_state.carbon_price = 60.0
+        st.session_state.carbon_price_slider = 60.0
         st.rerun()
 
 # Custom parameters (always visible)
@@ -256,7 +282,6 @@ solar_capacity = st.sidebar.slider(
     "Solar (GW)",
     min_value=0.0,
     max_value=150.0,
-    value=st.session_state.solar_cap,
     step=1.0,
     key="solar_slider"
 )
@@ -266,7 +291,6 @@ onshore_wind_capacity = st.sidebar.slider(
     "Onshore Wind (GW)",
     min_value=0.0,
     max_value=150.0,
-    value=st.session_state.onshore_wind_cap,
     step=1.0,
     key="onshore_slider"
 )
@@ -276,7 +300,6 @@ offshore_wind_capacity = st.sidebar.slider(
     "Offshore Wind (GW)",
     min_value=0.0,
     max_value=150.0,
-    value=st.session_state.offshore_wind_cap,
     step=1.0,
     key="offshore_slider"
 )
@@ -286,7 +309,6 @@ nuclear_capacity = st.sidebar.slider(
     "Nuclear (GW)",
     min_value=0.0,
     max_value=50.0,
-    value=st.session_state.nuclear_cap,
     step=1.0,
     key="nuclear_slider"
 )
@@ -296,7 +318,6 @@ biomass_capacity = st.sidebar.slider(
     "Biomass (GW)",
     min_value=0.0,
     max_value=50.0,
-    value=st.session_state.biomass_cap,
     step=0.5,
     key="biomass_slider"
 )
@@ -306,7 +327,6 @@ hydro_capacity = st.sidebar.slider(
     "Hydro (GW)",
     min_value=0.0,
     max_value=50.0,
-    value=st.session_state.hydro_cap,
     step=0.5,
     key="hydro_slider"
 )
@@ -316,7 +336,6 @@ interconnector_capacity = st.sidebar.slider(
     "Interconnectors (GW)",
     min_value=0.0,
     max_value=50.0,
-    value=st.session_state.interconnector_cap,
     step=1.0,
     key="interconnector_slider"
 )
@@ -326,7 +345,6 @@ electrification = st.sidebar.slider(
     "Electrification Factor",
     min_value=0.8,
     max_value=2.0,
-    value=st.session_state.electrification,
     step=0.1,
     help="Demand growth multiplier (1.3 = 30% increase from today's levels). Sets peak demand and required capacity.",
     key="electrification_slider"
@@ -381,7 +399,6 @@ gas_fuel_cost = st.sidebar.slider(
     "Gas Fuel Cost (£/MWh)",
     min_value=30.0,
     max_value=120.0,
-    value=st.session_state.gas_fuel_cost,
     step=5.0,
     help="Fuel cost component of gas marginal cost",
     key="gas_fuel_slider"
@@ -392,7 +409,6 @@ carbon_price = st.sidebar.slider(
     "Carbon Price (£/tonne CO₂)",
     min_value=20.0,
     max_value=100.0,
-    value=st.session_state.carbon_price,
     step=5.0,
     help="UK ETS carbon allowance price",
     key="carbon_price_slider"
@@ -439,18 +455,25 @@ st.sidebar.markdown("*Contracts for Difference*")
 # Initialize CfD strike prices in session state (AR6 2024 prices, 2025 money)
 if "cfd_solar_strike" not in st.session_state:
     st.session_state.cfd_solar_strike = 69.0
+if "cfd_solar_slider" not in st.session_state:
+    st.session_state.cfd_solar_slider = 69.0
 if "cfd_onshore_strike" not in st.session_state:
     st.session_state.cfd_onshore_strike = 58.0
+if "cfd_onshore_slider" not in st.session_state:
+    st.session_state.cfd_onshore_slider = 58.0
 if "cfd_offshore_strike" not in st.session_state:
     st.session_state.cfd_offshore_strike = 71.0
+if "cfd_offshore_slider" not in st.session_state:
+    st.session_state.cfd_offshore_slider = 71.0
 if "cfd_coverage" not in st.session_state:
     st.session_state.cfd_coverage = 0.8
+if "cfd_coverage_slider" not in st.session_state:
+    st.session_state.cfd_coverage_slider = 80.0
 
 cfd_solar_strike = st.sidebar.slider(
     "Solar Strike",
     min_value=30.0,
     max_value=150.0,
-    value=st.session_state.cfd_solar_strike,
     step=5.0,
     help="Guaranteed price for solar generators under CfD (AR6: ~£69/MWh in 2025 money)",
     key="cfd_solar_slider"
@@ -461,7 +484,6 @@ cfd_onshore_strike = st.sidebar.slider(
     "Onshore Wind Strike",
     min_value=30.0,
     max_value=150.0,
-    value=st.session_state.cfd_onshore_strike,
     step=5.0,
     help="Guaranteed price for onshore wind under CfD (AR6: ~£58/MWh in 2025 money)",
     key="cfd_onshore_slider"
@@ -472,7 +494,6 @@ cfd_offshore_strike = st.sidebar.slider(
     "Offshore Wind Strike",
     min_value=30.0,
     max_value=150.0,
-    value=st.session_state.cfd_offshore_strike,
     step=5.0,
     help="Guaranteed price for offshore wind under CfD (AR6: ~£71/MWh in 2025 money)",
     key="cfd_offshore_slider"
@@ -483,7 +504,6 @@ cfd_coverage = st.sidebar.slider(
     "CfD Coverage (%)",
     min_value=0.0,
     max_value=100.0,
-    value=st.session_state.cfd_coverage * 100,
     step=10.0,
     help="Percentage of RE capacity under CfD contracts",
     key="cfd_coverage_slider"
@@ -530,6 +550,15 @@ time_period = st.sidebar.selectbox(
 
 # Store time period in session state to persist across preset changes
 st.session_state.time_period = time_period
+
+# Note about time period selection
+st.sidebar.caption("""
+**Time Period Selection:**
+- **1 Day**: Day 180 (summer weekday)
+- **1 Week**: Days 180-186 (summer week)
+- **1 Month**: Days 180-209 (summer month)
+- **1 Year**: Full year cycle (all 365 days)
+""")
 
 # Helper function to format time labels based on period
 def format_time_labels(results, time_period):
