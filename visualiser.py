@@ -1457,44 +1457,57 @@ with tab3:
         cfd_positive = [max(0, c) for c in cfd_display]
         cfd_negative = [min(0, c) for c in cfd_display]
         
+        # Calculate total labels (already calculated as display_values)
+        total_labels = [f"£{v:.1f}{hovertemplate_suffix}" if v != 0 else "" for v in display_values]
+        
+        # Determine which segment should show the total label
+        # If there's a positive CfD, show total on top-up segment (topmost)
+        # If there's only negative CfD or no CfD, show total on wholesale segment
+        has_positive_cfd = any(c > 0 for c in cfd_positive)
+        has_negative_cfd = any(c < 0 for c in cfd_negative)
+        
         # Add wholesale revenue bars
+        # Show total label on wholesale if no positive CfD (or if only negative)
+        wholesale_text = total_labels if not has_positive_cfd else [""] * len(generator_names)
         fig.add_trace(go.Bar(
             x=generator_names,
             y=wholesale_display,
             name='Wholesale Revenue',
             marker_color='#1f77b4',
-            text=[f"£{w:.1f}{hovertemplate_suffix}" if w != 0 else "" for w in wholesale_display],
+            text=wholesale_text,
             textposition='outside',
             hovertemplate="%{x}<br>Wholesale: £%{y:.2f}{hovertemplate_suffix}<extra></extra>"
         ))
         
-        # Add positive CfD payments (top-up) - stacked above
-        if any(c > 0 for c in cfd_positive):
+        # Add positive CfD payments (top-up) - stacked above wholesale
+        if has_positive_cfd:
             fig.add_trace(go.Bar(
                 x=generator_names,
                 y=cfd_positive,
                 name='CfD Top-up (Subsidy)',
-                marker_color='#FF6347',
-                text=[f"£{c:.1f}{hovertemplate_suffix}" if c != 0 else "" for c in cfd_positive],
+                marker_color='#2ca02c',  # Green for positive (top-up)
+                text=total_labels,  # Show total on top segment
                 textposition='outside',
-                hovertemplate="%{x}<br>CfD Top-up: £%{y:.2f}{hovertemplate_suffix}<extra></extra>"
+                hovertemplate="%{x}<br>CfD Top-up: £%{y:.2f}{hovertemplate_suffix}<extra></extra>",
+                base=wholesale_display  # Stack on top of wholesale revenue
             ))
         
-        # Add negative CfD payments (clawback) - below x-axis
-        # These will automatically go below because they're negative values
-        if any(c < 0 for c in cfd_negative):
+        # Add negative CfD payments (clawback) - stacked below wholesale
+        # In stacked mode, negatives will automatically stack downward from zero
+        if has_negative_cfd:
             fig.add_trace(go.Bar(
                 x=generator_names,
                 y=cfd_negative,
                 name='CfD Clawback (Return)',
-                marker_color='#2ca02c',
-                text=[f"£{abs(c):.1f}{hovertemplate_suffix}" if c != 0 else "" for c in cfd_negative],
+                marker_color='#FF6347',  # Red for negative (clawback)
+                text=[""],  # No label on negative segment (total already on wholesale)
                 textposition='outside',
-                hovertemplate="%{x}<br>CfD Clawback: £%{y:.2f}{hovertemplate_suffix}<extra></extra>"
+                hovertemplate="%{x}<br>CfD Clawback: £%{y:.2f}{hovertemplate_suffix}<extra></extra>",
+                base=wholesale_display  # Stack below wholesale (negative values extend downward)
             ))
         
         fig.update_layout(
-            barmode='group',  # Group mode: negatives automatically go below axis, positives group side-by-side
+            barmode='stack',  # Stacked mode: components stack on top of each other
             xaxis_title="Generator",
             yaxis_title=y_axis_title,
             height=400,
@@ -1562,7 +1575,7 @@ with tab3:
     fig2 = go.Figure()
     
     if include_cfd and any(c != 0 for c in cfd_payments_by_generator.values()):
-        # Bars showing wholesale + CfD (with negatives below axis)
+        # Bars showing wholesale + CfD (stacked)
         base_capture = [r.average_capture_price for r in revenues]
         cfd_per_mwh = [cfd_payments_by_generator.get(r.name, 0.0) / r.total_generation_mwh 
                        if r.total_generation_mwh > 0 else 0.0 for r in revenues]
@@ -1571,42 +1584,61 @@ with tab3:
         cfd_positive = [max(0, c) for c in cfd_per_mwh]
         cfd_negative = [min(0, c) for c in cfd_per_mwh]
         
+        # Calculate total (effective) capture price for labels
+        total_labels = [f"£{p:.1f}" for p in effective_capture_prices]
+        
+        # Determine which segment should show the total label
+        has_positive_cfd = any(c > 0 for c in cfd_positive)
+        has_negative_cfd = any(c < 0 for c in cfd_negative)
+        
+        # Add wholesale capture price bars
+        # Show total label on wholesale if no positive CfD (or if only negative)
+        wholesale_text = total_labels if not has_positive_cfd else [""] * len(gen_names)
         fig2.add_trace(go.Bar(
             x=gen_names,
             y=base_capture,
             name='Wholesale Capture Price',
-            marker_color='#2ca02c',
-            text=[f"£{p:.1f}" for p in base_capture],
+            marker_color='#1f77b4',  # Blue for wholesale (consistent with revenue chart)
+            text=wholesale_text,
             textposition='outside',
             hovertemplate="%{x}<br>Wholesale: £%{y:.1f}/MWh<extra></extra>"
         ))
         
         # Positive CfD (top-up) - stacked above
-        if any(c > 0 for c in cfd_positive):
+        if has_positive_cfd:
             fig2.add_trace(go.Bar(
                 x=gen_names,
                 y=cfd_positive,
                 name='CfD Top-up per MWh',
-                marker_color='#FF6347',
-                text=[f"£{c:.1f}" if c != 0 else "" for c in cfd_positive],
+                marker_color='#2ca02c',  # Green for positive (top-up)
+                text=total_labels,  # Show total on top segment
                 textposition='outside',
-                hovertemplate="%{x}<br>CfD Top-up: £%{y:.1f}/MWh<extra></extra>"
+                hovertemplate="%{x}<br>CfD Top-up: £%{y:.1f}/MWh<extra></extra>",
+                base=base_capture  # Stack on top of wholesale
             ))
         
-        # Negative CfD (clawback) - below x-axis
-        # These will automatically go below because they're negative values
-        if any(c < 0 for c in cfd_negative):
+        # Negative CfD (clawback) - stacked below wholesale
+        if has_negative_cfd:
             fig2.add_trace(go.Bar(
                 x=gen_names,
                 y=cfd_negative,
                 name='CfD Clawback per MWh',
-                marker_color='#2ca02c',
-                text=[f"£{abs(c):.1f}" if c != 0 else "" for c in cfd_negative],
+                marker_color='#FF6347',  # Red for negative (clawback)
+                text=[""],  # No label on negative segment (total already on wholesale)
                 textposition='outside',
-                hovertemplate="%{x}<br>CfD Clawback: £%{y:.1f}/MWh<extra></extra>"
+                hovertemplate="%{x}<br>CfD Clawback: £%{y:.1f}/MWh<extra></extra>",
+                base=base_capture  # Stack below wholesale (negative values extend downward)
             ))
         
-        fig2.update_layout(barmode='group')  # Group mode: negatives automatically go below axis, positives group side-by-side
+        fig2.update_layout(
+            barmode='stack',  # Stacked mode: components stack on top of each other
+            xaxis_title="Generator",
+            yaxis_title="Price (£/MWh)",
+            height=400,
+            xaxis_tickangle=-45,
+            margin=dict(t=40, b=50, l=50, r=50),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        )
     else:
         # Simple bars
         fig2.add_trace(go.Bar(
@@ -1792,20 +1824,25 @@ with tab4:
                     ar_data.append({
                         'Allocation Round': ar.replace('_', ' '),
                         'Technology': tech.replace('_', ' ').title(),
-                        'Strike Price (£/MWh)': price
+                        'Strike Price (£/MWh)': price,
+                        'AR_Order': int(ar.split('_')[0].replace('AR', ''))  # Extract number for sorting
                     })
 
         ar_df = pd.DataFrame(ar_data)
+        
+        # Sort by Allocation Round order to ensure chronological display
+        ar_df = ar_df.sort_values('AR_Order')
 
         # Create line chart for strike price evolution
         fig_ar = go.Figure()
         for tech in ar_df['Technology'].unique():
-            tech_data = ar_df[ar_df['Technology'] == tech]
+            tech_data = ar_df[ar_df['Technology'] == tech].sort_values('AR_Order')
             fig_ar.add_trace(go.Scatter(
                 x=tech_data['Allocation Round'],
                 y=tech_data['Strike Price (£/MWh)'],
                 name=tech,
-                mode='lines+markers'
+                mode='lines+markers',
+                connectgaps=False  # Don't connect across missing data points
             ))
 
         fig_ar.update_layout(

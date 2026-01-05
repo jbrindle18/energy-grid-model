@@ -47,6 +47,52 @@ Thus, the state is forced to step in and fix prices to ensure survival. We have 
 
 ---
 
+## Could Battery Storage Be the Game-Changer?
+
+While this model highlights significant structural problems with renewable-heavy electricity markets, there is one technology that could fundamentally alter this dynamic: **battery storage**.
+
+### The Storage Solution
+
+Battery storage has the potential to address many of the core problems this model reveals:
+
+**1. Reducing Curtailment and Wasted Energy**
+
+When renewable generation exceeds demand (causing prices to crash to zero), batteries can **store the excess energy** instead of it being wasted through curtailment. This captured energy can then be discharged later when demand is high and prices spike. By acting as a "buffer" between supply and demand, batteries transform what would be wasted renewable energy into valuable, dispatchable power.
+
+**2. Smoothing Price Volatility**
+
+The model shows extreme price volatility: zero prices when renewables are abundant, and high prices when they drop. Batteries can **arbitrage these price differences** - buying (charging) when prices are low and selling (discharging) when prices are high. This creates a natural price floor and ceiling, reducing the wild swings that make the market so unstable. The more storage capacity, the smoother prices become.
+
+**3. Restoring Market Functionality**
+
+Perhaps most importantly, batteries could **restore genuine price signals** to the market. When batteries charge during low-price periods and discharge during high-price periods, they respond directly to market prices - unlike CfD-backed renewables that are insulated from price signals. This creates a more functional market where price actually guides behavior, rather than being overridden by government contracts.
+
+**4. Reducing CfD Costs**
+
+If batteries can store excess renewable energy and discharge it during high-price periods, renewable generators would earn more from the wholesale market. This means they would need **fewer CfD top-up payments** to reach their strike price. In scenarios where batteries are abundant, the wholesale price might stay closer to CfD strike prices, dramatically reducing the subsidy burden on consumers.
+
+**5. Reducing Gas Backup Requirements**
+
+Currently, gas plants must maintain high capacity to cover periods when renewables drop. But if batteries can store renewable energy and discharge it during these periods, the need for gas backup capacity decreases. This could reduce the "stranded asset" problem and lower overall system costs.
+
+### The Catch: 
+
+However, there are significant challenges:
+
+- **Cost**: Battery storage is still expensive, though costs are falling rapidly. The economics depend on the price spread between low and high periods - which this model shows can be substantial, but may narrow as more storage enters the market.
+
+- **Scale**: The UK expects 23-27 GW of battery capacity by 2030, but this may still be insufficient to fully address the volatility shown in high-RE scenarios. The model shows curtailment in the hundreds of GWh - storing all of this would require massive battery capacity.
+
+- **Duration**: Most grid-scale batteries today can only store 2-4 hours of energy. For longer periods (overnight, or during extended low-wind periods), longer-duration storage or other solutions would be needed.
+
+- **Market Structure**: Batteries would need appropriate market mechanisms to participate effectively as described here. Current UK markets are still adapting to storage participation.
+
+
+
+**This model doesn't include storage, so it may be **overstating the problems** in high-RE scenarios. The future might be less bleak than these simulations suggest - but only if storage deployment keeps pace with renewable growth, and if the economics work out.**
+
+---
+
 ## Model Strengths
 
 This model accurately captures several key dynamics of the UK electricity market:
