@@ -1,8 +1,12 @@
-Can # About This Model
+# About This Model
+
+> **⚠️ Beta Version**: This model is currently in beta. While it accurately captures core market dynamics, it is a simplified representation with known limitations. Results should be interpreted with caution and not used for investment or policy decisions. Feedback and bug reports welcome.
 
 ## Note from the Author
 
 This interactive tool simulates the UK wholesale electricity market to explore price dynamics under different renewable energy scenarios. It was developed by me, **Joe Brindle** ([www.joebrindle.uk](https://www.joebrindle.uk/)), as a project of interest, after writing my undergraduate dissertation *"Profit vs the Planet: Is the UK's market-based electricity decarbonisation strategy feasible?"*, largely inspired by Brett Christophers' book [*The Price is Wrong*](https://www.versobooks.com/en-gb/products/3069-the-price-is-wrong).
+
+**Contact**: [joe@joebrindle.uk](mailto:joe@joebrindle.uk)
 
 ---
 
@@ -64,6 +68,8 @@ This model is a **simplified representation** and does not include several impor
 
 ### ⚠️ Critical Missing Elements
 
+**CfD Strike Price Assumptions**: The model's default CfD strike prices (£58-71/MWh) reflect Allocation Round 6 (2024) prices for new projects. However, existing renewable energy capacity has much higher strike prices from earlier allocation rounds. The weighted average of active CfDs in 2025 was approximately £151/MWh. This means the model may **understate CfD costs** for scenarios representing the current UK system, where older, more expensive contracts still dominate. Users can adjust strike prices in the visualiser to explore different contract mixes.
+
 **Curtailment Costs**: The model tracks curtailment volume but not costs. In reality, curtailed generators (especially older Renewables Obligation farms) receive compensation payments, estimated at ~£3bn/year at peak. This is not modelled because curtailment compensation varies, and is sometimes part of CfD sometimes not. This means the model may significantly **understate costs** in high-RE scenarios where renewables are generating above demand.
 
 **Capacity Markets**: The model does not include capacity market payments (~£1.4bn/year in 2025, approximately £5/MWh spread across all generation). These payments ensure gas plants remain available for grid stability, even when not generating. This understates consumer costs and gas plant economics, as capacity markets subsidize the cost of maintaining backup generation.
@@ -94,141 +100,14 @@ This model is a **simplified representation** and does not include several impor
 
 **Network Losses**: Transmission losses are not modelled. Real generation must exceed demand to account for losses.
 
----
 
-## Impact on Gas Generators as Renewable Energy Increases
-
-As renewable energy penetration grows, gas generators experience significant changes in their economics:
-
-### 📉 Declining Utilization (Load Factor)
-
-- **Current UK (2024)**: Gas typically runs at 30-40% capacity factor
-- **2030 Scenarios**: Gas load factor drops to 15-25% as renewables displace it
-- **2050 Scenarios**: Gas may run at <10% capacity factor, primarily during peak demand or low-wind periods
-
-**Why this happens**: Gas is dispatched only when renewables (and other dispatchable sources) cannot meet demand. As renewable capacity grows, there are fewer hours when gas is needed.
-
-### 💰 Revenue Per Capacity Declines
-
-- Gas plants maintain high **installed capacity** (needed for peak demand/backup)
-- But **total revenue** grows more slowly than capacity
-- Result: **Revenue per GW of capacity** decreases significantly
-
-**Example**: A gas plant might earn £6M/year at 40% utilization, but only £2M/year at 15% utilization, even though it still needs to maintain the same capacity for reliability.
-
-### ⚡ Higher Prices When Running (But Fewer Hours)
-
-- When gas **does** run, it often sets the marginal price (being the most expensive generator needed)
-- This means gas earns **higher prices per MWh** when it runs
-- However, it runs **fewer hours**, so total revenue still declines
-
-**The paradox**: Gas generators earn more per MWh but less overall because they're displaced by cheaper renewables for most hours.
-
-### 🔄 Transition to "Peaker Plant" Economics
-
-Gas plants transition from **baseload/load-following** to **peaker plant** economics:
-
-- **High capacity** maintained for grid reliability and peak demand
-- **Low utilization** as renewables provide most generation
-- **High prices** when running (often during scarcity events)
-- **Low revenue per capacity** due to infrequent operation
-
-This creates a **stranded asset risk**: Gas plants may become uneconomic to operate at low capacity factors, but are still needed for grid stability. This is a key challenge for the energy transition.
-
-### 📊 What the Model Shows
-
-In the "Generator Revenues" tab, you can see:
-- Gas **total revenue** may remain significant (due to high prices when running)
-- But gas **revenue per capacity** declines sharply as RE penetration increases
-- Gas **load factor** (utilization) decreases, showing fewer hours of operation
-- Gas **capture price** (average price received) may increase, but this doesn't offset lower utilization
-
-This demonstrates why gas generators face economic challenges as renewables grow, even though they remain essential for grid reliability.
-
----
-
-## Valid Conclusions from This Model
-
-### ✅ What This Model Can Tell You:
-
-**1. Merit Order Dynamics**
-- The model accurately shows how renewable energy drives down wholesale prices through merit order dispatch
-- It correctly demonstrates that gas often sets the marginal price when renewables can't meet demand
-- Price volatility patterns (spikes and collapses) are realistic
-
-**2. Cannibalisation Effect**
-- The model correctly shows renewable generators earning less than average wholesale price
-- This is because renewables frequently set the (low) marginal price themselves
-- The effect increases as renewable penetration grows
-
-**3. CfD Cost Dynamics**
-- The model accurately captures how CfD costs change as wholesale prices fall
-- It correctly shows top-up payments increasing when wholesale < strike price
-- The relationship between RE penetration and CfD costs is realistic
-
-**4. Gas Generator Economics**
-- The model correctly shows declining gas utilization as renewables grow
-- Revenue per capacity declines are accurately represented
-- The transition to peaker plant economics is well-captured
-
----
-
-## Invalid Conclusions - What This Model Cannot Tell You
-
-### ❌ What This Model Cannot Tell You:
-
-**1. Exact Consumer Costs**
-- The model does NOT include curtailment payments (~£3bn/year), capacity market payments (~£1.4bn/year), or balancing costs (£2.5-5.2bn/year), so consumer costs are likely **understated by £14-23/MWh**
-- Storage costs, network upgrade costs, and other system costs are not included
-- Real consumer bills include many other charges beyond wholesale + CfD levy
-
-**2. Precise Price Forecasts**
-- This is not a forecasting tool - it's an educational model
-- Real prices depend on many factors not modelled (gas market volatility, European prices, etc.)
-- Forward markets and hedging smooth out the volatility shown here
-
-**3. Grid Reliability**
-- The model assumes sufficient capacity to meet demand (with safety margins)
-- It does NOT model actual grid failures, blackouts, or capacity adequacy
-- Real grid operators face more complex reliability challenges
-
-**4. Optimal Policy Decisions**
-- The model shows economic dynamics but cannot determine "best" policies
-- Trade-offs between costs, reliability, and decarbonisation require broader analysis
-- Political and social factors are not considered
-
----
-
-## Appropriate Use Cases
-
-This model is best used for:
-
-✅ **Understanding market mechanics**: How merit order dispatch works, how prices form, how CfDs function
-
-✅ **Exploring relationships**: How renewable penetration affects prices, how gas utilization changes, how CfD costs evolve
-
-✅ **Scenario comparison**: Comparing different capacity mixes, testing sensitivity to gas/carbon prices
-
-✅ **Educational purposes**: Teaching electricity market economics, renewable energy impacts, CfD mechanisms
-
-✅ **Policy discussion**: Illustrating economic dynamics and trade-offs (not prescribing solutions)
-
-This model should NOT be used for:
-
-❌ **Investment decisions**: Missing critical factors (curtailment costs, storage, network constraints)
-
-❌ **Policy prescriptions**: Cannot determine optimal policies without broader analysis
-
-❌ **Price forecasting**: Too many simplifications to predict actual future prices
-
-❌ **Grid planning**: Does not model reliability, network constraints, or operational complexity
 
 ---
 
 ## Data Sources & References
 
 - **Capacity data**: BEIS/DESNZ Energy Statistics 2024
-- **CfD strike prices**: Low Carbon Contracts Company (LCCC)
+- **CfD strike prices**: Low Carbon Contracts Company (LCCC). Default values reflect Allocation Round 6 (2024) prices for new projects. Historical allocation round prices are available in the visualiser.
 - **Capacity factors**: BEIS historical averages (Solar ~11%, Onshore ~27%, Offshore ~40%)
 - **Gas costs**: Typical 2024/25 fuel + UK ETS carbon prices
 - **Scenario presets**: NESO Clean Power 2030, UK Government targets, GlobalData projections

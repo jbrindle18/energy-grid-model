@@ -1,5 +1,7 @@
 # UK Energy Grid Model
 
+> **⚠️ Beta Version**: This model is currently in beta. While it accurately captures core market dynamics, it is a simplified representation with known limitations. Results should be interpreted with caution and not used for investment or policy decisions.
+
 A Python simulation of UK wholesale electricity market dynamics, exploring how renewable energy penetration affects pricing, generator revenues, and consumer costs.
 
 **Based on research from:** *"Profit vs the Planet: Is the UK's market-based electricity decarbonisation strategy feasible?"* - University of Sheffield

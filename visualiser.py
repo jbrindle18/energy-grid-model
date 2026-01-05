@@ -112,6 +112,13 @@ st.markdown("""
 st.markdown('<p class="main-header">⚡ UK Energy Grid Model Visualiser</p>', unsafe_allow_html=True)
 st.markdown("Explore how renewable energy penetration affects wholesale electricity prices, generator revenues, and consumer costs")
 
+# Beta notice
+st.info("""
+**⚠️ Beta Version**: This model is currently in beta. While it accurately captures core market dynamics, 
+it is a simplified representation with known limitations. Results should be interpreted with caution 
+and not used for investment or policy decisions. Feedback welcome: [joe@joebrindle.uk](mailto:joe@joebrindle.uk)
+""")
+
 # Sidebar controls
 st.sidebar.header("⚙️ Simulation Controls")
 
@@ -119,11 +126,7 @@ st.sidebar.header("⚙️ Simulation Controls")
 st.sidebar.subheader("📋 Presets")
 preset_options = {
     "Current UK (2024) - BEIS/DESNZ": "current",
-    "2030 Target - Energy Security Strategy": "2030",
-    "2030 NESO - Further Flex & Renewables": "neso_flex",
     "2030 NESO - New Dispatch": "neso_dispatch",
-    "2030 UK Government - Clean Power Targets": "gov2030",
-    "2035 Projection - GlobalData/Net Zero": "2035",
     "2050 NESO - Holistic Transition": "neso2050"
 }
 
@@ -131,18 +134,14 @@ selected_preset = st.sidebar.selectbox(
     "Select Preset",
     options=list(preset_options.keys()),
     index=0,  # Default to "Current UK"
-    help="Choose a preset scenario. See PRESET_SOURCES.md for detailed source information."
+    help="Choose a preset. These are broadly based on some different models of future, renewable-heavy grids, but they need some refinement."
 )
 
 preset_value = preset_options[selected_preset]
 
 # Convert dropdown selection to boolean flags for compatibility
 preset_current = (preset_value == "current")
-preset_2030 = (preset_value == "2030")
-preset_neso_flex = (preset_value == "neso_flex")
 preset_neso_dispatch = (preset_value == "neso_dispatch")
-preset_gov2030 = (preset_value == "gov2030")
-preset_2035 = (preset_value == "2035")
 preset_neso2050 = (preset_value == "neso2050")
 
 # Initialize session state for slider values (default to Current UK values)
@@ -199,56 +198,6 @@ if st.session_state.last_selected_preset != selected_preset:
         st.session_state.carbon_price = 60.0
         st.rerun()
 
-    elif preset_2030:
-        # 2030 Target - UK Energy Security Strategy
-        # Official targets: 50GW offshore wind, 45-47GW solar
-        # These are conservative estimates accounting for deployment timelines
-        # See PRESET_SOURCES.md for detailed documentation
-        st.session_state.solar_cap = 21.0
-        st.session_state.solar_slider = 21.0
-        st.session_state.onshore_wind_cap = 25.2
-        st.session_state.onshore_slider = 25.2
-        st.session_state.offshore_wind_cap = 37.8  # Below 50GW target (realistic deployment)
-        st.session_state.offshore_slider = 37.8
-        st.session_state.nuclear_cap = 10.0
-        st.session_state.nuclear_slider = 10.0
-        st.session_state.biomass_cap = 2.4
-        st.session_state.biomass_slider = 2.4
-        st.session_state.hydro_cap = 1.9
-        st.session_state.hydro_slider = 1.9
-        st.session_state.interconnector_cap = 1.6
-        st.session_state.interconnector_slider = 1.6
-        st.session_state.electrification = 1.2
-        st.session_state.electrification_slider = 1.2
-        st.session_state.gas_fuel_cost = 55.0
-        st.session_state.carbon_price = 60.0
-        st.rerun()
-
-    elif preset_neso_flex:
-        # 2030 NESO - Further Flex and Renewables Scenario
-        # Based on NESO Clean Power 2030 report Table 1 (Published 5 November 2024)
-        # "Further Flex and Renewables" scenario emphasizes flexibility and renewable capacity
-        # See PRESET_SOURCES.md for detailed documentation
-        st.session_state.solar_cap = 47.4
-        st.session_state.solar_slider = 47.4
-        st.session_state.onshore_wind_cap = 27.3
-        st.session_state.onshore_slider = 27.3
-        st.session_state.offshore_wind_cap = 50.6
-        st.session_state.offshore_slider = 50.6
-        st.session_state.nuclear_cap = 3.5
-        st.session_state.nuclear_slider = 3.5
-        st.session_state.biomass_cap = 4.0
-        st.session_state.biomass_slider = 4.0
-        st.session_state.hydro_cap = 2.5  # Split from "Other renewables" (5.7 GW total: ~2.5 hydro, ~3.2 other)
-        st.session_state.hydro_slider = 2.5
-        st.session_state.interconnector_cap = 12.5
-        st.session_state.interconnector_slider = 12.5
-        st.session_state.electrification = 1.2
-        st.session_state.electrification_slider = 1.2
-        st.session_state.gas_fuel_cost = 55.0
-        st.session_state.carbon_price = 60.0
-        st.rerun()
-
     elif preset_neso_dispatch:
         # 2030 NESO - New Dispatch Scenario
         # Based on NESO Clean Power 2030 report Table 1 (Published 5 November 2024)
@@ -270,57 +219,6 @@ if st.session_state.last_selected_preset != selected_preset:
         st.session_state.interconnector_slider = 12.5
         st.session_state.electrification = 1.2
         st.session_state.electrification_slider = 1.2
-        st.session_state.gas_fuel_cost = 55.0
-        st.session_state.carbon_price = 60.0
-        st.rerun()
-
-    elif preset_gov2030:
-        # 2030 UK Government - Clean Power Targets
-        # Based on UK Government Clean Power 2030 Action Plan (Published 13 December 2024)
-        # Official targets: 50 GW solar, 55 GW offshore wind, 35 GW onshore wind
-        # At least 95% low-carbon generation by 2030
-        # See PRESET_SOURCES.md for detailed documentation
-        st.session_state.solar_cap = 50.0
-        st.session_state.solar_slider = 50.0
-        st.session_state.onshore_wind_cap = 35.0  # Official government target
-        st.session_state.onshore_slider = 35.0
-        st.session_state.offshore_wind_cap = 55.0  # Official government target
-        st.session_state.offshore_slider = 55.0
-        st.session_state.nuclear_cap = 10.0
-        st.session_state.nuclear_slider = 10.0
-        st.session_state.biomass_cap = 2.4
-        st.session_state.biomass_slider = 2.4
-        st.session_state.hydro_cap = 1.9
-        st.session_state.hydro_slider = 1.9
-        st.session_state.interconnector_cap = 8.4  # Maintain current interconnector capacity
-        st.session_state.interconnector_slider = 8.4
-        st.session_state.electrification = 1.2
-        st.session_state.electrification_slider = 1.2
-        st.session_state.gas_fuel_cost = 55.0
-        st.session_state.carbon_price = 60.0
-        st.rerun()
-
-    elif preset_2035:
-        # 2035 Projection - GlobalData/Net Zero Pathway
-        # Based on GlobalData forecast: 172.7GW total renewable capacity by 2035
-        # This represents a high-renewable pathway (~80% RE share)
-        # See PRESET_SOURCES.md for detailed documentation
-        st.session_state.solar_cap = 35.6
-        st.session_state.solar_slider = 35.6
-        st.session_state.onshore_wind_cap = 42.8
-        st.session_state.onshore_slider = 42.8
-        st.session_state.offshore_wind_cap = 64.1  # Exceeds GlobalData 58.3GW projection (includes floating)
-        st.session_state.offshore_slider = 64.1
-        st.session_state.nuclear_cap = 10.0
-        st.session_state.nuclear_slider = 10.0
-        st.session_state.biomass_cap = 2.4
-        st.session_state.biomass_slider = 2.4
-        st.session_state.hydro_cap = 1.9
-        st.session_state.hydro_slider = 1.9
-        st.session_state.interconnector_cap = 1.6
-        st.session_state.interconnector_slider = 1.6
-        st.session_state.electrification = 1.5
-        st.session_state.electrification_slider = 1.5
         st.session_state.gas_fuel_cost = 55.0
         st.session_state.carbon_price = 60.0
         st.rerun()
