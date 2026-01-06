@@ -75,31 +75,26 @@ def validate_demand_parameters(
 
 
 def validate_gas_parameters(
-    fuel_cost: float,
-    carbon_price: float
+    gas_price: float
 ) -> Tuple[bool, Optional[str]]:
     """
-    Validate gas price parameters.
+    Validate gas price parameter.
     
     Args:
-        fuel_cost: Gas fuel cost in £/MWh
-        carbon_price: Carbon price in £/tonne CO₂
+        gas_price: Gas wholesale price in £/MWh (includes fuel + carbon + O&M)
         
     Returns:
         Tuple of (is_valid, error_message)
     """
-    if fuel_cost < 0:
-        return False, "Gas fuel cost cannot be negative"
-    
-    if carbon_price < 0:
-        return False, "Carbon price cannot be negative"
+    if gas_price < 0:
+        return False, "Gas price cannot be negative"
     
     # Reasonable ranges (can be adjusted)
-    if fuel_cost > 200:
-        return False, f"Gas fuel cost seems unreasonably high: £{fuel_cost}/MWh"
+    if gas_price > 300:
+        return False, f"Gas price seems unreasonably high: £{gas_price}/MWh"
     
-    if carbon_price > 200:
-        return False, f"Carbon price seems unreasonably high: £{carbon_price}/tonne"
+    if gas_price < 20:
+        return False, f"Gas price seems unreasonably low: £{gas_price}/MWh"
     
     return True, None
 

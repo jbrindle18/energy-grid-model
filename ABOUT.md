@@ -155,8 +155,12 @@ This model is a **simplified representation** and does not include several impor
 - **Capacity data**: BEIS/DESNZ Energy Statistics 2024
 - **CfD strike prices**: Low Carbon Contracts Company (LCCC). Default values reflect Allocation Round 6 (2024) prices for new projects. Historical allocation round prices are available in the visualiser.
 - **Capacity factors**: BEIS historical averages (Solar ~11%, Onshore ~27%, Offshore ~40%)
-- **Gas costs**: Typical 2024/25 fuel + UK ETS carbon prices
+- **Gas costs**: Calibrated to £73/MWh wholesale price for 2025 validation. See VALIDATION_2025.md for calibration details.
 - **Scenario presets**: NESO Clean Power 2030, UK Government targets, GlobalData projections
+
+## Model Validation
+
+The model has been validated against 2025 UK electricity market data. With calibrated parameters, the model produces wholesale prices within **£0.15/MWh (0.2%)** of expected values. See `VALIDATION_2025.md` for detailed validation results and calibrated parameters.
 
 *This is an educational model for exploring market dynamics, not a forecasting tool.*
 

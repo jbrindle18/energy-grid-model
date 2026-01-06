@@ -21,7 +21,7 @@ class TestRevenueCalculation:
         # Create a simple scenario
         grid = Grid(generators=[
             SolarGenerator(name="Solar", capacity_mw=1000),
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
         ])
         
         # Simulate one hour
@@ -42,7 +42,7 @@ class TestRevenueCalculation:
     def test_average_capture_price(self):
         """Average capture price should equal total revenue / total generation."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
         ])
         
         results = []
@@ -62,7 +62,7 @@ class TestRevenueCalculation:
     def test_load_factor_calculation(self):
         """Load factor should be actual generation / potential generation."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
         ])
         
         # Simulate 24 hours with constant demand
@@ -89,7 +89,7 @@ class TestPriceDurationCurve:
     def test_price_duration_curve_creation(self):
         """Price duration curve should be created from results."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
         ])
         
         results = []
@@ -105,7 +105,7 @@ class TestPriceDurationCurve:
     def test_prices_sorted_descending(self):
         """Prices should be sorted in descending order."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
         ])
         
         results = []
@@ -122,7 +122,7 @@ class TestPriceDurationCurve:
     def test_price_at_percentile(self):
         """Price at percentile should return correct value."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
         ])
         
         results = []
@@ -145,7 +145,7 @@ class TestCannibalisationMetrics:
         """Cannibalisation metrics should be calculated from results."""
         grid = Grid(generators=[
             SolarGenerator(name="Solar", capacity_mw=1000),
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
         ])
         
         results = []
@@ -163,7 +163,7 @@ class TestCannibalisationMetrics:
         """Capture rate should be RE capture price / average wholesale price."""
         grid = Grid(generators=[
             SolarGenerator(name="Solar", capacity_mw=2000),
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
         ])
         
         results = []

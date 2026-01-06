@@ -183,40 +183,20 @@ class GasGenerator(Generator):
     Combined Cycle Gas Turbine (CCGT).
 
     Gas is the marginal price-setter in most UK hours.
-    Marginal cost includes:
-    - Fuel cost (gas price)
-    - Carbon cost (UK ETS allowance price × emissions factor)
-    - Variable O&M (~£2-5/MWh)
-
-    UK ETS: ~£50-70/tonne CO₂ (2025)
-    Gas emissions: ~0.4 tonnes CO₂/MWh
-    Carbon cost: ~£20-30/MWh
-
-    Total marginal cost typically £70-100/MWh in 2025
+    
+    The marginal_cost_per_mwh represents the total wholesale gas price,
+    which includes fuel cost, carbon costs, and variable O&M.
+    
+    Typical values: £70-100/MWh in 2025
     (can vary from £50-150+ depending on gas and carbon markets).
     """
-    fuel_cost_per_mwh: float = 55.0  # £/MWh - gas fuel cost (highly variable)
-    carbon_price_per_tonne: float = 60.0  # £/tonne CO₂ - UK ETS price (2025 typical)
-    emissions_factor: float = GAS_EMISSIONS_FACTOR  # tonnes CO₂ per MWh for gas CCGT
-    variable_om_per_mwh: float = GAS_VARIABLE_OM  # £/MWh - variable operations & maintenance
+    marginal_cost_per_mwh: float = 73.0  # £/MWh - total gas wholesale price (includes fuel + carbon + O&M, calibrated for 2025)
     capacity_factor: float = 0.95  # Technical availability (dispatchable)
-    # Override base class marginal_cost - calculated dynamically, not stored
-    marginal_cost: float = field(init=False, repr=False)
-
-    def __post_init__(self):
-        """Initialize - marginal_cost is calculated dynamically."""
-        pass
-
-    def __getattribute__(self, name: str):
-        """Override to calculate marginal_cost dynamically."""
-        if name == 'marginal_cost':
-            # Calculate on-the-fly from current fuel and carbon prices
-            fuel = object.__getattribute__(self, 'fuel_cost_per_mwh')
-            carbon_price = object.__getattribute__(self, 'carbon_price_per_tonne')
-            emissions = object.__getattribute__(self, 'emissions_factor')
-            om = object.__getattribute__(self, 'variable_om_per_mwh')
-            return fuel + (carbon_price * emissions) + om
-        return object.__getattribute__(self, name)
+    
+    @property
+    def marginal_cost(self) -> float:
+        """Return the marginal cost (same as marginal_cost_per_mwh for simplicity)."""
+        return self.marginal_cost_per_mwh
 
     def available_power(self, hour: int = 0, day_of_year: int = 0) -> float:
         return self.capacity_mw * self.capacity_factor
@@ -227,11 +207,12 @@ class NuclearGenerator(Generator):
     """
     Nuclear power plant.
 
-    UK nuclear capacity factor: ~70% (includes planned outages)
+    UK nuclear capacity factor: ~71-72% (includes planned outages)
+    Based on 2024 data: 40.6 TWh from 6.5 GW = 71.3% capacity factor
     Very low marginal cost but inflexible - typically runs as baseload.
     """
     marginal_cost: float = 10.0  # £/MWh - low marginal, high fixed costs
-    capacity_factor: float = 0.70
+    capacity_factor: float = 0.71  # Updated to match 2024 performance (was 0.70)
 
     def available_power(self, hour: int = 0, day_of_year: int = 0) -> float:
         return self.capacity_mw * self.capacity_factor
@@ -305,8 +286,7 @@ def create_uk_current_fleet() -> list[Generator]:
         GasGenerator(
             name="UK Gas CCGT", 
             capacity_mw=UK_CURRENT_CAPACITY['gas'] * 1000,
-            fuel_cost_per_mwh=55.0,  # 2025 typical gas fuel cost
-            carbon_price_per_tonne=60.0  # 2025 UK ETS price
+            marginal_cost_per_mwh=73.0  # £/MWh - 2025 typical gas wholesale price
         ),
         InterconnectorImport(name="Interconnectors", capacity_mw=UK_CURRENT_CAPACITY['interconnectors'] * 1000),
     ]
@@ -373,8 +353,7 @@ def create_scaled_fleet(re_penetration_target: float = 0.5,
         GasGenerator(
             name="Gas CCGT", 
             capacity_mw=other_capacity * gas_share,
-            fuel_cost_per_mwh=55.0,  # 2025 typical
-            carbon_price_per_tonne=60.0  # 2025 UK ETS
+            marginal_cost_per_mwh=73.0  # £/MWh - 2025 typical gas wholesale price
         ),
         BiomassGenerator(name="Biomass", capacity_mw=other_capacity * other_share * 0.6),
         InterconnectorImport(name="Interconnectors", capacity_mw=other_capacity * other_share * 0.4),

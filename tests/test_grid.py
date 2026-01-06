@@ -17,7 +17,7 @@ class TestBasicDispatch:
     def test_dispatch_single_generator(self):
         """Dispatch with a single generator should meet demand."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0)
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0)
         ])
         
         result = grid.dispatch(demand_mw=500, hour=12, day_of_year=172)
@@ -29,7 +29,7 @@ class TestBasicDispatch:
     def test_dispatch_merit_order(self):
         """Generators should be dispatched in merit order (cheapest first)."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
             SolarGenerator(name="Solar", capacity_mw=1000),
             NuclearGenerator(name="Nuclear", capacity_mw=1000),
         ])
@@ -46,7 +46,7 @@ class TestBasicDispatch:
     def test_dispatch_meets_demand(self):
         """Dispatch should always meet demand if capacity is sufficient."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=2000, fuel_cost_per_mwh=55.0)
+            GasGenerator(name="Gas", capacity_mw=2000, marginal_cost_per_mwh=73.0)
         ])
         
         result = grid.dispatch(demand_mw=1500, hour=12, day_of_year=172)
@@ -59,7 +59,7 @@ class TestBasicDispatch:
         grid = Grid(generators=[
             SolarGenerator(name="Solar", capacity_mw=500),
             NuclearGenerator(name="Nuclear", capacity_mw=500),
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
         ])
         
         # Demand that requires all three
@@ -76,7 +76,7 @@ class TestEdgeCases:
     def test_negative_demand_raises_error(self):
         """Negative demand should raise ValueError."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0)
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0)
         ])
         
         with pytest.raises(ValueError, match="Demand must be non-negative"):
@@ -85,7 +85,7 @@ class TestEdgeCases:
     def test_zero_demand(self):
         """Zero demand should result in zero generation."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0)
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0)
         ])
         
         result = grid.dispatch(demand_mw=0, hour=12, day_of_year=172)
@@ -103,7 +103,7 @@ class TestEdgeCases:
     def test_insufficient_capacity_emergency_pricing(self):
         """When demand exceeds capacity, price should spike to emergency level."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=500, fuel_cost_per_mwh=55.0, carbon_price_per_tonne=60.0)
+            GasGenerator(name="Gas", capacity_mw=500, marginal_cost_per_mwh=73.0)
         ])
         
         result = grid.dispatch(demand_mw=1000, hour=12, day_of_year=172)
@@ -119,7 +119,7 @@ class TestRenewableEnergy:
     def test_renewables_dispatched_first(self):
         """Renewables (zero cost) should be dispatched before fossil fuels."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
             SolarGenerator(name="Solar", capacity_mw=500),
             OnshoreWindGenerator(name="Wind", capacity_mw=500),
         ])
@@ -172,7 +172,7 @@ class TestRenewableEnergy:
         """RE share should be calculated correctly."""
         grid = Grid(generators=[
             SolarGenerator(name="Solar", capacity_mw=1000),
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0),
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0),
         ])
         
         result = grid.dispatch(demand_mw=1500, hour=12, day_of_year=172)
@@ -202,7 +202,7 @@ class TestDispatchResult:
     def test_dispatch_result_fields(self):
         """DispatchResult should have all required fields."""
         grid = Grid(generators=[
-            GasGenerator(name="Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0)
+            GasGenerator(name="Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0)
         ])
         
         result = grid.dispatch(demand_mw=500, hour=12, day_of_year=172)

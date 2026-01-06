@@ -68,29 +68,26 @@ class TestGasGenerator:
     """Tests for GasGenerator."""
     
     def test_gas_marginal_cost_calculation(self):
-        """Gas marginal cost should include fuel, carbon, and O&M."""
+        """Gas marginal cost should equal the set wholesale price."""
         gas = GasGenerator(
             name="Test Gas",
             capacity_mw=1000,
-            fuel_cost_per_mwh=50.0,
-            carbon_price_per_tonne=60.0,
-            variable_om_per_mwh=3.0
+            marginal_cost_per_mwh=77.0
         )
-        # Expected: 50 + (60 * 0.4) + 3 = 50 + 24 + 3 = 77
-        expected = 50.0 + (60.0 * 0.4) + 3.0
-        assert gas.marginal_cost == pytest.approx(expected, abs=0.1)
+        # Marginal cost should equal the wholesale price
+        assert gas.marginal_cost == pytest.approx(77.0, abs=0.1)
     
     def test_gas_uses_full_capacity(self):
         """Gas should use full capacity when available."""
-        gas = GasGenerator(name="Test Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0)
+        gas = GasGenerator(name="Test Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0)
         output = gas.available_power(hour=12, day_of_year=172)
         # Should be capacity * capacity_factor (0.95)
         assert output == pytest.approx(1000 * 0.95, abs=1.0)
     
     def test_gas_default_marginal_cost(self):
         """Default gas marginal cost should be reasonable."""
-        gas = GasGenerator(name="Test Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0)
-        # Default should be around £82/MWh (55 + 24 + 3)
+        gas = GasGenerator(name="Test Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0)
+        # Default should be around £73/MWh
         assert 70 <= gas.marginal_cost <= 90
 
 
@@ -137,7 +134,7 @@ class TestGeneratorBasics:
     
     def test_generator_repr(self):
         """Generator __repr__ should be informative."""
-        gas = GasGenerator(name="Test Gas", capacity_mw=1000, fuel_cost_per_mwh=55.0)
+        gas = GasGenerator(name="Test Gas", capacity_mw=1000, marginal_cost_per_mwh=73.0)
         repr_str = repr(gas)
         assert "Test Gas" in repr_str
         assert "1000" in repr_str or "1" in repr_str  # Might show as 1GW

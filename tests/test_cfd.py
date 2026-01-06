@@ -258,7 +258,7 @@ class TestCreateCfDPortfolioForFleet:
             SolarGenerator(name="Solar", capacity_mw=1000),
             OnshoreWindGenerator(name="Onshore Wind", capacity_mw=2000),
             OffshoreWindGenerator(name="Offshore Wind", capacity_mw=3000),
-            GasGenerator(name="Gas", capacity_mw=5000, fuel_cost_per_mwh=55.0, carbon_price_per_tonne=60.0)
+            GasGenerator(name="Gas", capacity_mw=5000, marginal_cost_per_mwh=73.0)
         ]
         
         portfolio = create_cfd_portfolio_for_fleet(generators, coverage=1.0)

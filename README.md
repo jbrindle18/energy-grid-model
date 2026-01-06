@@ -44,7 +44,7 @@ Models Contracts for Difference - the UK's main renewable subsidy mechanism:
 
 ### Key Metrics
 - **Wholesale Price**: Market clearing price
-- **Consumer Price**: Wholesale + CfD levy (what you actually pay)
+- **Wholesale + CfD**: Wholesale price + CfD levy (note: does not include capacity markets, balancing costs, network charges, etc.)
 - **Cannibalisation**: How RE generators earn less as RE grows
 - **Curtailment**: RE that can't be used (no storage modelled)
 
@@ -78,8 +78,8 @@ energy-grid-model/
 
 ## Key Findings
 
-| Scenario | RE Share | Wholesale Price | Consumer Price | CfD Status |
-|----------|----------|-----------------|----------------|------------|
+| Scenario | RE Share | Wholesale Price | Wholesale + CfD | CfD Status |
+|----------|----------|-----------------|-----------------|------------|
 | Current UK | ~35% | £82/MWh | £75/MWh | Clawback |
 | 2030 Targets | ~65% | £45/MWh | £55/MWh | Subsidy |
 | High RE | ~85% | £18/MWh | £52/MWh | Large Subsidy |

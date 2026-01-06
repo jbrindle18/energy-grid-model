@@ -262,7 +262,7 @@ def create_cfd_portfolio_for_fleet(
 
     Args:
         generators: List of Generator objects
-        coverage: Fraction of RE capacity under CfD (0-1)
+        coverage: Fraction of RE capacity under CfD (0-1) - applies uniformly to all RE
         strike_prices: Dict of {generator_type: strike_price}, uses defaults if None
 
     Returns:
@@ -295,6 +295,88 @@ def create_cfd_portfolio_for_fleet(
             capacity_mw=gen.capacity_mw * coverage,
         )
         portfolio.add_contract(contract)
+
+    return portfolio
+
+
+def create_cfd_portfolio_from_state(
+    generators: list,
+    portfolio_state,
+    strike_prices: Optional[dict] = None,
+) -> CfDPortfolio:
+    """
+    Create a CfD portfolio using coverage percentages from a CfDPortfolioState.
+    
+    This allows per-technology coverage (e.g., 80% solar, 90% offshore wind)
+    that adapts to the user's RE capacity settings. Also includes nuclear CfDs
+    based on absolute capacity in the portfolio state.
+
+    Args:
+        generators: List of Generator objects
+        portfolio_state: CfDPortfolioState with coverage percentages and nuclear capacity
+        strike_prices: Dict of {generator_type: strike_price}, uses portfolio_state if None
+
+    Returns:
+        CfDPortfolio with contracts for RE generators and nuclear
+    """
+    portfolio = CfDPortfolio()
+
+    # Track total nuclear capacity in fleet to calculate coverage
+    total_nuclear_capacity_mw = 0.0
+    nuclear_generators = []
+
+    for gen in generators:
+        gen_lower = gen.name.lower()
+        
+        # Handle nuclear separately (absolute GW, not percentage)
+        if 'nuclear' in gen_lower:
+            total_nuclear_capacity_mw += gen.capacity_mw
+            nuclear_generators.append(gen)
+            continue
+        
+        # Only create CfDs for RE sources (marginal cost < £5)
+        if gen.marginal_cost >= 5:
+            continue
+
+        # Determine coverage and strike price based on generator type
+        if 'solar' in gen_lower:
+            coverage = portfolio_state.solar_coverage
+            strike = strike_prices.get('solar', portfolio_state.avg_strike_solar) if strike_prices else portfolio_state.avg_strike_solar
+        elif 'offshore' in gen_lower:
+            coverage = portfolio_state.offshore_wind_coverage
+            strike = strike_prices.get('offshore_wind', portfolio_state.avg_strike_offshore) if strike_prices else portfolio_state.avg_strike_offshore
+        elif 'wind' in gen_lower:
+            coverage = portfolio_state.onshore_wind_coverage
+            strike = strike_prices.get('onshore_wind', portfolio_state.avg_strike_onshore) if strike_prices else portfolio_state.avg_strike_onshore
+        else:
+            coverage = 0.0  # Unknown RE type
+            strike = 50.0  # Default
+
+        if coverage > 0 and strike > 0:
+            contract = CfDContract(
+                generator_name=gen.name,
+                strike_price=strike,
+                capacity_mw=gen.capacity_mw * coverage,
+            )
+            portfolio.add_contract(contract)
+
+    # Handle nuclear CfDs (percentage-based, like RE)
+    if portfolio_state.nuclear_coverage > 0 and total_nuclear_capacity_mw > 0:
+        nuclear_strike = strike_prices.get('nuclear', portfolio_state.avg_strike_nuclear) if strike_prices else portfolio_state.avg_strike_nuclear
+        
+        if nuclear_strike > 0:
+            # Use coverage percentage from portfolio state
+            nuclear_coverage = portfolio_state.nuclear_coverage
+            
+            # Create contracts for nuclear generators proportional to their capacity
+            for gen in nuclear_generators:
+                if nuclear_coverage > 0:
+                    contract = CfDContract(
+                        generator_name=gen.name,
+                        strike_price=nuclear_strike,
+                        capacity_mw=gen.capacity_mw * nuclear_coverage,
+                    )
+                    portfolio.add_contract(contract)
 
     return portfolio
 

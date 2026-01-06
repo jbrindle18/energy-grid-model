@@ -34,9 +34,17 @@ try:
     )
     from src.cfd import (
         CfDContract, CfDPortfolio, LCCCSimulationResult,
-        simulate_cfd_costs, create_cfd_portfolio_for_fleet,
+        simulate_cfd_costs, create_cfd_portfolio_for_fleet, create_cfd_portfolio_from_state,
         CURRENT_STRIKE_PRICES, UK_CFD_STRIKE_PRICES,
         estimate_project_viability, PROJECT_COSTS
+    )
+    from src.ro import (
+        ROPortfolio, ROPortfolioState, ROSimulationResult,
+        simulate_ro_costs, create_ro_portfolio_from_state, get_ro_portfolio_state,
+        DEFAULT_ROC_VALUE, simulate_combined_support, CombinedSupportResult
+    )
+    from src.ro_portfolio import (
+        create_ro_portfolio_with_estimates, RO_FINAL_EXPIRY_YEAR, RO_CLOSURE_YEAR
     )
     from src.constants import (
         UK_BASE_PEAK_DEMAND_GW, GAS_EMISSIONS_FACTOR, GAS_VARIABLE_OM
@@ -47,6 +55,10 @@ try:
     )
     from src.capacity_planning import (
         calculate_required_gas_capacity, calculate_total_capacity
+    )
+    from src.cfd_portfolio import (
+        CfDPortfolio as HistoricalCfDPortfolio,
+        create_portfolio_with_projections
     )
 except ImportError:
     # Fallback for direct execution
@@ -67,9 +79,17 @@ except ImportError:
     )
     from cfd import (
         CfDContract, CfDPortfolio, LCCCSimulationResult,
-        simulate_cfd_costs, create_cfd_portfolio_for_fleet,
+        simulate_cfd_costs, create_cfd_portfolio_for_fleet, create_cfd_portfolio_from_state,
         CURRENT_STRIKE_PRICES, UK_CFD_STRIKE_PRICES,
         estimate_project_viability, PROJECT_COSTS
+    )
+    from ro import (
+        ROPortfolio, ROPortfolioState, ROSimulationResult,
+        simulate_ro_costs, create_ro_portfolio_from_state, get_ro_portfolio_state,
+        DEFAULT_ROC_VALUE, simulate_combined_support, CombinedSupportResult
+    )
+    from ro_portfolio import (
+        create_ro_portfolio_with_estimates, RO_FINAL_EXPIRY_YEAR, RO_CLOSURE_YEAR
     )
     from constants import (
         UK_BASE_PEAK_DEMAND_GW, GAS_EMISSIONS_FACTOR, GAS_VARIABLE_OM
@@ -80,6 +100,10 @@ except ImportError:
     )
     from capacity_planning import (
         calculate_required_gas_capacity, calculate_total_capacity
+    )
+    from cfd_portfolio import (
+        CfDPortfolio as HistoricalCfDPortfolio,
+        create_portfolio_with_projections
     )
 
 # Page configuration
@@ -93,6 +117,14 @@ st.set_page_config(
 # Custom CSS for better styling
 st.markdown("""
     <style>
+    /* Wider sidebar */
+    [data-testid="stSidebar"] {
+        min-width: 340px;
+        max-width: 340px;
+    }
+    [data-testid="stSidebar"] > div:first-child {
+        width: 340px;
+    }
     .main-header {
         font-size: 2.5rem;
         font-weight: bold;
@@ -177,14 +209,10 @@ if "electrification" not in st.session_state:
     st.session_state.electrification = 1.0
 if "electrification_slider" not in st.session_state:
     st.session_state.electrification_slider = 1.0
-if "gas_fuel_cost" not in st.session_state:
-    st.session_state.gas_fuel_cost = 55.0
-if "gas_fuel_slider" not in st.session_state:
-    st.session_state.gas_fuel_slider = 55.0
-if "carbon_price" not in st.session_state:
-    st.session_state.carbon_price = 60.0
-if "carbon_price_slider" not in st.session_state:
-    st.session_state.carbon_price_slider = 60.0
+if "gas_price" not in st.session_state:
+    st.session_state.gas_price = 73.0  # £/MWh - total gas wholesale price (calibrated for 2025)
+if "gas_price_slider" not in st.session_state:
+    st.session_state.gas_price_slider = 73.0  # £/MWh - total gas wholesale price (calibrated for 2025)
 
 # Track last selected preset to only apply when it changes
 if "last_selected_preset" not in st.session_state:
@@ -195,8 +223,9 @@ if st.session_state.last_selected_preset != selected_preset:
     st.session_state.last_selected_preset = selected_preset
     
     if preset_current:
-        # Current UK (2024) - BEIS/DESNZ Statistics
+        # Current UK (2024/2025) - BEIS/DESNZ Statistics
         # Based on official 2024 installed capacity data
+        # Gas price calibrated to £50/MWh for 2025 validation (see VALIDATION_2025.md)
         # See PRESET_SOURCES.md for detailed documentation
         st.session_state.solar_cap = 15.5
         st.session_state.solar_slider = 15.5
@@ -214,10 +243,10 @@ if st.session_state.last_selected_preset != selected_preset:
         st.session_state.interconnector_slider = 8.4
         st.session_state.electrification = 1.0
         st.session_state.electrification_slider = 1.0
-        st.session_state.gas_fuel_cost = 55.0
-        st.session_state.gas_fuel_slider = 55.0
-        st.session_state.carbon_price = 60.0
-        st.session_state.carbon_price_slider = 60.0
+        # Gas price calibrated for 2025: £73/MWh (validated against expected £75/MWh wholesale price)
+        st.session_state.gas_price = 73.0
+        st.session_state.gas_price_slider = 73.0
+        st.session_state.simulation_year = 2025  # CfD portfolio year
         st.rerun()
 
     elif preset_neso_dispatch:
@@ -241,10 +270,9 @@ if st.session_state.last_selected_preset != selected_preset:
         st.session_state.interconnector_slider = 12.5
         st.session_state.electrification = 1.2
         st.session_state.electrification_slider = 1.2
-        st.session_state.gas_fuel_cost = 55.0
-        st.session_state.gas_fuel_slider = 55.0
-        st.session_state.carbon_price = 60.0
-        st.session_state.carbon_price_slider = 60.0
+        st.session_state.gas_price = 73.0  # Same as 2025 - gas prices are unpredictable
+        st.session_state.gas_price_slider = 73.0
+        st.session_state.simulation_year = 2030  # CfD portfolio year
         st.rerun()
 
     elif preset_neso2050:
@@ -268,167 +296,135 @@ if st.session_state.last_selected_preset != selected_preset:
         st.session_state.interconnector_slider = 16.5
         st.session_state.electrification = 1.8  # Higher electrification by 2050
         st.session_state.electrification_slider = 1.8
-        st.session_state.gas_fuel_cost = 55.0
-        st.session_state.gas_fuel_slider = 55.0
-        st.session_state.carbon_price = 60.0
-        st.session_state.carbon_price_slider = 60.0
+        st.session_state.gas_price = 73.0  # Same as 2025 - gas prices are unpredictable
+        st.session_state.gas_price_slider = 73.0
+        st.session_state.simulation_year = 2050  # CfD portfolio year
         st.rerun()
 
-# Custom parameters (always visible)
-st.sidebar.subheader("Capacity (GW)")
+# Capacity section - collapsible
+with st.sidebar.expander("⚡ Capacity (GW)", expanded=False):
+    # Individual capacity sliders for each fuel source
+    solar_capacity = st.slider(
+        "Solar",
+        min_value=0.0,
+        max_value=150.0,
+        step=1.0,
+        key="solar_slider"
+    )
+    st.session_state.solar_cap = st.session_state.solar_slider
 
-# Individual capacity sliders for each fuel source
-solar_capacity = st.sidebar.slider(
-    "Solar (GW)",
-    min_value=0.0,
-    max_value=150.0,
-    step=1.0,
-    key="solar_slider"
-)
-st.session_state.solar_cap = st.session_state.solar_slider
+    onshore_wind_capacity = st.slider(
+        "Onshore Wind",
+        min_value=0.0,
+        max_value=150.0,
+        step=1.0,
+        key="onshore_slider"
+    )
+    st.session_state.onshore_wind_cap = st.session_state.onshore_slider
 
-onshore_wind_capacity = st.sidebar.slider(
-    "Onshore Wind (GW)",
-    min_value=0.0,
-    max_value=150.0,
-    step=1.0,
-    key="onshore_slider"
-)
-st.session_state.onshore_wind_cap = st.session_state.onshore_slider
+    offshore_wind_capacity = st.slider(
+        "Offshore Wind",
+        min_value=0.0,
+        max_value=150.0,
+        step=1.0,
+        key="offshore_slider"
+    )
+    st.session_state.offshore_wind_cap = st.session_state.offshore_slider
 
-offshore_wind_capacity = st.sidebar.slider(
-    "Offshore Wind (GW)",
-    min_value=0.0,
-    max_value=150.0,
-    step=1.0,
-    key="offshore_slider"
-)
-st.session_state.offshore_wind_cap = st.session_state.offshore_slider
+    nuclear_capacity = st.slider(
+        "Nuclear",
+        min_value=0.0,
+        max_value=50.0,
+        step=1.0,
+        key="nuclear_slider"
+    )
+    st.session_state.nuclear_cap = st.session_state.nuclear_slider
 
-nuclear_capacity = st.sidebar.slider(
-    "Nuclear (GW)",
-    min_value=0.0,
-    max_value=50.0,
-    step=1.0,
-    key="nuclear_slider"
-)
-st.session_state.nuclear_cap = st.session_state.nuclear_slider
+    biomass_capacity = st.slider(
+        "Biomass",
+        min_value=0.0,
+        max_value=50.0,
+        step=0.5,
+        key="biomass_slider"
+    )
+    st.session_state.biomass_cap = st.session_state.biomass_slider
 
-biomass_capacity = st.sidebar.slider(
-    "Biomass (GW)",
-    min_value=0.0,
-    max_value=50.0,
-    step=0.5,
-    key="biomass_slider"
-)
-st.session_state.biomass_cap = st.session_state.biomass_slider
+    hydro_capacity = st.slider(
+        "Hydro",
+        min_value=0.0,
+        max_value=50.0,
+        step=0.5,
+        key="hydro_slider"
+    )
+    st.session_state.hydro_cap = st.session_state.hydro_slider
 
-hydro_capacity = st.sidebar.slider(
-    "Hydro (GW)",
-    min_value=0.0,
-    max_value=50.0,
-    step=0.5,
-    key="hydro_slider"
-)
-st.session_state.hydro_cap = st.session_state.hydro_slider
+    interconnector_capacity = st.slider(
+        "Interconnectors",
+        min_value=0.0,
+        max_value=50.0,
+        step=1.0,
+        key="interconnector_slider"
+    )
+    st.session_state.interconnector_cap = st.session_state.interconnector_slider
 
-interconnector_capacity = st.sidebar.slider(
-    "Interconnectors (GW)",
-    min_value=0.0,
-    max_value=50.0,
-    step=1.0,
-    key="interconnector_slider"
-)
-st.session_state.interconnector_cap = st.session_state.interconnector_slider
-    
-electrification = st.sidebar.slider(
-    "Electrification Factor",
-    min_value=0.8,
-    max_value=2.0,
-    step=0.1,
-    help="Demand growth multiplier (1.3 = 30% increase from today's levels). Sets peak demand and required capacity.",
-    key="electrification_slider"
-)
-st.session_state.electrification = st.session_state.electrification_slider
+    electrification = st.slider(
+        "Electrification Factor",
+        min_value=0.8,
+        max_value=2.0,
+        step=0.1,
+        help="Demand multiplier (1.3 = 30% increase)",
+        key="electrification_slider"
+    )
+    st.session_state.electrification = st.session_state.electrification_slider
 
-# Calculate gas capacity and total capacity using helper functions
-gas_capacity = calculate_required_gas_capacity(
-    solar_capacity_gw=solar_capacity,
-    onshore_wind_capacity_gw=onshore_wind_capacity,
-    offshore_wind_capacity_gw=offshore_wind_capacity,
-    nuclear_capacity_gw=nuclear_capacity,
-    biomass_capacity_gw=biomass_capacity,
-    hydro_capacity_gw=hydro_capacity,
-    interconnector_capacity_gw=interconnector_capacity,
-    electrification_factor=electrification,
-    base_peak_demand_gw=UK_BASE_PEAK_DEMAND_GW
-)
+    # Calculate gas capacity and total capacity using helper functions
+    gas_capacity = calculate_required_gas_capacity(
+        solar_capacity_gw=solar_capacity,
+        onshore_wind_capacity_gw=onshore_wind_capacity,
+        offshore_wind_capacity_gw=offshore_wind_capacity,
+        nuclear_capacity_gw=nuclear_capacity,
+        biomass_capacity_gw=biomass_capacity,
+        hydro_capacity_gw=hydro_capacity,
+        interconnector_capacity_gw=interconnector_capacity,
+        electrification_factor=electrification,
+        base_peak_demand_gw=UK_BASE_PEAK_DEMAND_GW
+    )
 
-# Calculate total capacity
-re_capacity_total = solar_capacity + onshore_wind_capacity + offshore_wind_capacity
-total_capacity_gw = calculate_total_capacity(
-    solar_capacity_gw=solar_capacity,
-    onshore_wind_capacity_gw=onshore_wind_capacity,
-    offshore_wind_capacity_gw=offshore_wind_capacity,
-    nuclear_capacity_gw=nuclear_capacity,
-    biomass_capacity_gw=biomass_capacity,
-    hydro_capacity_gw=hydro_capacity,
-    interconnector_capacity_gw=interconnector_capacity,
-    gas_capacity_gw=gas_capacity
-)
+    # Calculate total capacity
+    re_capacity_total = solar_capacity + onshore_wind_capacity + offshore_wind_capacity
+    total_capacity_gw = calculate_total_capacity(
+        solar_capacity_gw=solar_capacity,
+        onshore_wind_capacity_gw=onshore_wind_capacity,
+        offshore_wind_capacity_gw=offshore_wind_capacity,
+        nuclear_capacity_gw=nuclear_capacity,
+        biomass_capacity_gw=biomass_capacity,
+        hydro_capacity_gw=hydro_capacity,
+        interconnector_capacity_gw=interconnector_capacity,
+        gas_capacity_gw=gas_capacity
+    )
 
-# Calculate peak demand for display
-peak_demand_gw = UK_BASE_PEAK_DEMAND_GW * electrification
+    # Calculate peak demand for display
+    peak_demand_gw = UK_BASE_PEAK_DEMAND_GW * electrification
 
-# Display calculated values
-st.sidebar.metric(
-    "Peak Demand (GW)",
-    f"{peak_demand_gw:.1f}",
-    help="Calculated from electrification factor"
-)
+    # Summary metrics inside expander
+    st.markdown("---")
+    cap_col1, cap_col2 = st.columns(2)
+    with cap_col1:
+        st.metric("Total Capacity", f"{total_capacity_gw:.0f} GW")
+    with cap_col2:
+        st.metric("Gas CCGT", f"{gas_capacity:.1f} GW")
 
-st.sidebar.metric(
-    "Gas CCGT (GW)",
-    f"{gas_capacity:.1f}",
-    help="Automatically adjusted to meet peak demand requirements"
-)
-
-# Gas price controls
-st.sidebar.subheader("Gas Price Parameters")
-gas_fuel_cost = st.sidebar.slider(
-    "Gas Fuel Cost (£/MWh)",
-    min_value=30.0,
-    max_value=120.0,
-    step=5.0,
-    help="Fuel cost component of gas marginal cost",
-    key="gas_fuel_slider"
-)
-st.session_state.gas_fuel_cost = st.session_state.gas_fuel_slider
-
-carbon_price = st.sidebar.slider(
-    "Carbon Price (£/tonne CO₂)",
-    min_value=20.0,
-    max_value=100.0,
-    step=5.0,
-    help="UK ETS carbon allowance price",
-    key="carbon_price_slider"
-)
-st.session_state.carbon_price = st.session_state.carbon_price_slider
-
-# Calculate total gas marginal cost using constants
-gas_marginal_cost = gas_fuel_cost + (carbon_price * GAS_EMISSIONS_FACTOR) + GAS_VARIABLE_OM
-
-st.sidebar.metric(
-    "Gas Marginal Cost (£/MWh)",
-    f"{gas_marginal_cost:.1f}",
-    help="Fuel + Carbon + O&M"
-)
-
-st.sidebar.metric(
-    "Total Capacity (GW)",
-    f"{total_capacity_gw:.1f}",
-    help="Sum of all sources"
-)
+# Gas price section - collapsible
+with st.sidebar.expander("🔥 Gas Pricing", expanded=False):
+    gas_price = st.slider(
+        "Gas Wholesale Price (£/MWh)",
+        min_value=30.0,
+        max_value=200.0,
+        step=5.0,
+        help="Total gas wholesale price (includes fuel cost, carbon costs, and variable O&M)",
+        key="gas_price_slider"
+    )
+    st.session_state.gas_price = st.session_state.gas_price_slider
 
 # Calculate RE penetration
 re_penetration = re_capacity_total / total_capacity_gw if total_capacity_gw > 0 else 0
@@ -448,74 +444,192 @@ custom_capacities = {
 # Calculate RE penetration for display
 re_penetration = (solar_capacity + onshore_wind_capacity + offshore_wind_capacity) / total_capacity_gw if total_capacity_gw > 0 else 0
 
-# CfD Strike Price Controls
-st.sidebar.subheader("CfD Strike Prices (£/MWh)")
-st.sidebar.markdown("*Contracts for Difference*")
-
-# Initialize CfD strike prices in session state (AR6 2024 prices, 2025 money)
+# Initialize CfD session state (before expander)
+if "simulation_year" not in st.session_state:
+    st.session_state.simulation_year = 2025
+if "cfd_price_mode" not in st.session_state:
+    st.session_state.cfd_price_mode = "Portfolio (Historical)"
 if "cfd_solar_strike" not in st.session_state:
     st.session_state.cfd_solar_strike = 69.0
-if "cfd_solar_slider" not in st.session_state:
-    st.session_state.cfd_solar_slider = 69.0
 if "cfd_onshore_strike" not in st.session_state:
     st.session_state.cfd_onshore_strike = 58.0
-if "cfd_onshore_slider" not in st.session_state:
-    st.session_state.cfd_onshore_slider = 58.0
 if "cfd_offshore_strike" not in st.session_state:
     st.session_state.cfd_offshore_strike = 71.0
-if "cfd_offshore_slider" not in st.session_state:
-    st.session_state.cfd_offshore_slider = 71.0
 if "cfd_coverage" not in st.session_state:
     st.session_state.cfd_coverage = 0.8
-if "cfd_coverage_slider" not in st.session_state:
-    st.session_state.cfd_coverage_slider = 80.0
 
-cfd_solar_strike = st.sidebar.slider(
-    "Solar Strike",
-    min_value=30.0,
-    max_value=150.0,
-    step=5.0,
-    help="Guaranteed price for solar generators under CfD (AR6: ~£69/MWh in 2025 money)",
-    key="cfd_solar_slider"
-)
-st.session_state.cfd_solar_strike = cfd_solar_strike
+# CfD Settings section - collapsible
+with st.sidebar.expander("📊 CfD Portfolio Settings", expanded=False):
+    # Simulation Year
+    simulation_year = st.slider(
+        "Simulation Year",
+        min_value=2025,
+        max_value=2050,
+        value=st.session_state.simulation_year,
+        help="Year to simulate. Affects which CfD contracts are active."
+    )
+    st.session_state.simulation_year = simulation_year
 
-cfd_onshore_strike = st.sidebar.slider(
-    "Onshore Wind Strike",
-    min_value=30.0,
-    max_value=150.0,
-    step=5.0,
-    help="Guaranteed price for onshore wind under CfD (AR6: ~£58/MWh in 2025 money)",
-    key="cfd_onshore_slider"
-)
-st.session_state.cfd_onshore_strike = cfd_onshore_strike
+    # Always include projected AR7/AR8
+    historical_portfolio = create_portfolio_with_projections()
 
-cfd_offshore_strike = st.sidebar.slider(
-    "Offshore Wind Strike",
-    min_value=30.0,
-    max_value=150.0,
-    step=5.0,
-    help="Guaranteed price for offshore wind under CfD (AR6: ~£71/MWh in 2025 money)",
-    key="cfd_offshore_slider"
-)
-st.session_state.cfd_offshore_strike = cfd_offshore_strike
+    portfolio_state = historical_portfolio.get_portfolio_state(simulation_year)
 
-cfd_coverage = st.sidebar.slider(
-    "CfD Coverage (%)",
-    min_value=0.0,
-    max_value=100.0,
-    step=10.0,
-    help="Percentage of RE capacity under CfD contracts",
-    key="cfd_coverage_slider"
-) / 100
-st.session_state.cfd_coverage = cfd_coverage
+    # Strike Price Mode Toggle
+    st.markdown("**Strike Price Source**")
+    cfd_price_mode = st.radio(
+        "Strike prices",
+        options=["Portfolio (Historical)", "Manual"],
+        index=0 if st.session_state.cfd_price_mode == "Portfolio (Historical)" else 1,
+        horizontal=True,
+        help="Portfolio: weighted average from active CfDs. Manual: custom values.",
+        label_visibility="collapsed"
+    )
+    st.session_state.cfd_price_mode = cfd_price_mode
 
-# Store CfD parameters for later use
-cfd_strike_prices = {
-    'solar': cfd_solar_strike,
-    'onshore_wind': cfd_onshore_strike,
-    'offshore_wind': cfd_offshore_strike,
-}
+    use_portfolio_strikes = (cfd_price_mode == "Portfolio (Historical)")
+
+    if use_portfolio_strikes:
+        # Portfolio mode - show portfolio info compactly
+        st.markdown(f"**{simulation_year} Portfolio**")
+
+        # Get user's capacity settings
+        solar_cap = st.session_state.get('solar_cap', 15.0)
+        onshore_cap = st.session_state.get('onshore_wind_cap', 15.0)
+        offshore_cap = st.session_state.get('offshore_wind_cap', 15.0)
+        nuclear_cap = st.session_state.get('nuclear_cap', 6.5)
+        
+        # Calculate RE coverage using percentage-based approach
+        re_coverage = portfolio_state.estimated_re_coverage(solar_cap, onshore_cap, offshore_cap)
+        
+        # Get actual CfD capacity based on user's capacity settings
+        cfd_capacities = portfolio_state.get_cfd_capacity_gw(solar_cap, onshore_cap, offshore_cap, nuclear_cap)
+        total_cfd_cap = cfd_capacities['total_gw']
+
+        if total_cfd_cap > 0:
+            st.caption(f"CfD Capacity: {total_cfd_cap:.1f} GW | RE Coverage: {re_coverage*100:.0f}%")
+            st.caption(f"Coverage: Solar {portfolio_state.solar_coverage*100:.0f}% | "
+                      f"Onshore {portfolio_state.onshore_wind_coverage*100:.0f}% | "
+                      f"Offshore {portfolio_state.offshore_wind_coverage*100:.0f}% | "
+                      f"Nuclear {portfolio_state.nuclear_coverage*100:.0f}%")
+        else:
+            st.caption("No active CfD contracts (all expired)")
+
+        # Strike prices from portfolio (always show - interpolated if no capacity)
+        st.markdown("**Avg Strikes (£/MWh)**")
+        strike_col1, strike_col2, strike_col3 = st.columns(3)
+        with strike_col1:
+            st.metric("Solar", f"£{portfolio_state.avg_strike_solar:.0f}", label_visibility="collapsed")
+            st.caption("Solar")
+        with strike_col2:
+            st.metric("Onshore", f"£{portfolio_state.avg_strike_onshore:.0f}", label_visibility="collapsed")
+            st.caption("Onshore")
+        with strike_col3:
+            st.metric("Offshore", f"£{portfolio_state.avg_strike_offshore:.0f}", label_visibility="collapsed")
+            st.caption("Offshore")
+
+        # Set strike prices from portfolio (interpolated values available even with 0 capacity)
+        cfd_strike_prices = {
+            'solar': portfolio_state.avg_strike_solar,
+            'onshore_wind': portfolio_state.avg_strike_onshore,
+            'offshore_wind': portfolio_state.avg_strike_offshore,
+        }
+        
+        # Also set individual variables for use later in the code
+        cfd_solar_strike = portfolio_state.avg_strike_solar
+        cfd_onshore_strike = portfolio_state.avg_strike_onshore
+        cfd_offshore_strike = portfolio_state.avg_strike_offshore
+
+        # Use RE coverage (what % of RE generation is covered by CfDs)
+        cfd_coverage = re_coverage
+
+    else:
+        # Manual mode - show sliders
+        st.markdown("**Manual Strike Prices (£/MWh)**")
+
+        cfd_solar_strike = st.slider(
+            "Solar",
+            min_value=30.0,
+            max_value=200.0,
+            value=st.session_state.cfd_solar_strike,
+            step=5.0,
+            help="AR6 2024: ~£69/MWh"
+        )
+        st.session_state.cfd_solar_strike = cfd_solar_strike
+
+        cfd_onshore_strike = st.slider(
+            "Onshore Wind",
+            min_value=30.0,
+            max_value=200.0,
+            value=st.session_state.cfd_onshore_strike,
+            step=5.0,
+            help="AR6 2024: ~£58/MWh"
+        )
+        st.session_state.cfd_onshore_strike = cfd_onshore_strike
+
+        cfd_offshore_strike = st.slider(
+            "Offshore Wind",
+            min_value=30.0,
+            max_value=200.0,
+            value=st.session_state.cfd_offshore_strike,
+            step=5.0,
+            help="AR6 2024: ~£71/MWh"
+        )
+        st.session_state.cfd_offshore_strike = cfd_offshore_strike
+
+        cfd_coverage = st.slider(
+            "CfD Coverage (%)",
+            min_value=0.0,
+            max_value=100.0,
+            value=st.session_state.cfd_coverage * 100,
+            step=10.0,
+            help="Percentage of RE capacity under CfD contracts"
+        ) / 100
+        st.session_state.cfd_coverage = cfd_coverage
+
+        cfd_strike_prices = {
+            'solar': cfd_solar_strike,
+            'onshore_wind': cfd_onshore_strike,
+            'offshore_wind': cfd_offshore_strike,
+        }
+    
+    # RO Portfolio Information
+    st.divider()
+    st.markdown("**Renewables Obligation (RO)**")
+    
+    # Get RO portfolio state
+    ro_portfolio_manager = create_ro_portfolio_with_estimates()
+    ro_state = ro_portfolio_manager.get_portfolio_state(simulation_year)
+    
+    # Get user's capacity settings for RO coverage calculation
+    solar_cap = st.session_state.get('solar_cap', 15.0)
+    onshore_cap = st.session_state.get('onshore_wind_cap', 14.8)
+    offshore_cap = st.session_state.get('offshore_wind_cap', 14.7)
+    
+    # Calculate RO coverage
+    ro_coverage = ro_state.estimated_re_coverage(solar_cap, onshore_cap, offshore_cap)
+    ro_capacities = ro_state.get_ro_capacity_gw(solar_cap, onshore_cap, offshore_cap)
+    total_ro_cap = ro_capacities['total_gw']
+    
+    if total_ro_cap > 0:
+        st.caption(f"RO Capacity: {total_ro_cap:.1f} GW | RE Coverage: {ro_coverage*100:.1f}%")
+        st.caption(f"Coverage: Solar {ro_state.solar_coverage*100:.0f}% | "
+                  f"Onshore {ro_state.onshore_wind_coverage*100:.0f}% | "
+                  f"Offshore {ro_state.offshore_wind_coverage*100:.0f}%")
+        st.caption(f"Avg ROC Value: £{ro_state.avg_roc_value:.0f}/MWh")
+    else:
+        st.caption("No active RO contracts (all expired)")
+        st.info(f"RO projects expire 20 years after accreditation. All RO support ends by {RO_FINAL_EXPIRY_YEAR}.")
+    
+    # Show RO expiry timeline
+    if simulation_year < RO_FINAL_EXPIRY_YEAR:
+        years_remaining = RO_FINAL_EXPIRY_YEAR - simulation_year
+        st.caption(f"⚠️ RO closed to new applicants in {RO_CLOSURE_YEAR}. Projects expire gradually until {RO_FINAL_EXPIRY_YEAR} ({years_remaining} years remaining).")
+
+# Ensure portfolio_state is available outside expander
+if 'portfolio_state' not in dir():
+    historical_portfolio = create_portfolio_with_projections()
+    portfolio_state = historical_portfolio.get_portfolio_state(st.session_state.simulation_year)
 
 # Time period selection
 # Options removed - all tabs are always visible
@@ -626,7 +740,7 @@ def format_time_labels(results, time_period):
 
 # Main content area - simulation runs automatically
 # Check if we need to re-run (parameters changed or no results yet)
-current_params_hash = f"{solar_capacity}_{onshore_wind_capacity}_{offshore_wind_capacity}_{nuclear_capacity}_{biomass_capacity}_{hydro_capacity}_{interconnector_capacity}_{electrification}_{gas_fuel_cost}_{carbon_price}_{time_period}_{cfd_solar_strike}_{cfd_onshore_strike}_{cfd_offshore_strike}_{cfd_coverage}"
+current_params_hash = f"{solar_capacity}_{onshore_wind_capacity}_{offshore_wind_capacity}_{nuclear_capacity}_{biomass_capacity}_{hydro_capacity}_{interconnector_capacity}_{electrification}_{gas_price}_{time_period}_{cfd_strike_prices['solar']}_{cfd_strike_prices['onshore_wind']}_{cfd_strike_prices['offshore_wind']}_{cfd_coverage}_{simulation_year}_{use_portfolio_strikes}"
 
 if "last_params_hash" not in st.session_state:
     st.session_state.last_params_hash = ""
@@ -665,8 +779,7 @@ if needs_rerun:
         st.info("The simulation may not be able to meet demand. Results may be unreliable.")
     
     is_valid, error_msg = validate_gas_parameters(
-        fuel_cost=gas_fuel_cost,
-        carbon_price=carbon_price
+        gas_price=gas_price
     )
     if not is_valid:
         st.error(f"❌ Invalid gas parameters: {error_msg}")
@@ -705,8 +818,7 @@ if needs_rerun:
                 generators.append(GasGenerator(
                     name="Gas CCGT", 
                     capacity_mw=custom_capacities['gas'] * 1000,
-                    fuel_cost_per_mwh=gas_fuel_cost,
-                    carbon_price_per_tonne=carbon_price
+                    marginal_cost_per_mwh=gas_price
                 ))
             if custom_capacities['interconnectors'] > 0:
                 generators.append(InterconnectorImport(name="Interconnectors", capacity_mw=custom_capacities['interconnectors'] * 1000))
@@ -780,12 +892,29 @@ if needs_rerun:
             summary = SimulationSummary.from_results(results)
             
             # Calculate CfD costs
-            cfd_portfolio = create_cfd_portfolio_for_fleet(
-                generators=generators,
-                coverage=cfd_coverage,
-                strike_prices=cfd_strike_prices
-            )
+            # Use portfolio-based approach if in portfolio mode, otherwise use uniform coverage
+            if use_portfolio_strikes:
+                cfd_portfolio = create_cfd_portfolio_from_state(
+                    generators=generators,
+                    portfolio_state=portfolio_state,
+                    strike_prices=cfd_strike_prices
+                )
+            else:
+                cfd_portfolio = create_cfd_portfolio_for_fleet(
+                    generators=generators,
+                    coverage=cfd_coverage,
+                    strike_prices=cfd_strike_prices
+                )
             cfd_result = simulate_cfd_costs(results, cfd_portfolio)
+            
+            # Calculate RO costs using portfolio system
+            ro_portfolio_manager = create_ro_portfolio_with_estimates()
+            ro_state = ro_portfolio_manager.get_portfolio_state(simulation_year)
+            ro_portfolio = create_ro_portfolio_from_state(
+                generators=generators,
+                ro_state=ro_state
+            )
+            ro_result = simulate_ro_costs(results, ro_portfolio, simulation_year)
 
             # Store in session state
             st.session_state.last_results = results
@@ -796,6 +925,10 @@ if needs_rerun:
             st.session_state.last_params_hash = current_params_hash
             st.session_state.last_cfd_result = cfd_result
             st.session_state.last_cfd_portfolio = cfd_portfolio
+            st.session_state.last_ro_result = ro_result
+            st.session_state.last_ro_portfolio = ro_portfolio
+            st.session_state.last_ro_state = ro_state
+            st.session_state.last_ro_portfolio_manager = ro_portfolio_manager
             
         except ValueError as e:
             st.error(f"❌ Simulation failed: {e}")
@@ -815,6 +948,9 @@ summary = st.session_state.last_summary
 grid = st.session_state.last_grid
 cfd_result = st.session_state.get('last_cfd_result')
 cfd_portfolio = st.session_state.get('last_cfd_portfolio')
+ro_result = st.session_state.get('last_ro_result')
+ro_portfolio = st.session_state.get('last_ro_portfolio')
+ro_state = st.session_state.get('last_ro_state')
 
 if results is None:
     st.info("👈 Adjust parameters in the sidebar to run simulation")
@@ -832,22 +968,44 @@ with col1:
     )
 
 with col2:
-    # Calculate effective consumer price: wholesale + CfD levy
+    # Calculate wholesale + CfD + RO levy
     # CfD levy = net CfD cost / total consumption
-    if cfd_result:
-        cfd_levy = cfd_result.subsidy_per_mwh_consumed
-        effective_price = summary.average_price + cfd_levy
-        delta = cfd_levy
-        delta_str = f"{cfd_levy:+.1f} CfD"
+    # RO levy = RO payments / total consumption
+    cfd_levy = cfd_result.subsidy_per_mwh_consumed if cfd_result else 0.0
+    ro_levy = ro_result.subsidy_per_mwh_consumed if ro_result else 0.0
+    total_levy = cfd_levy + ro_levy  # Combined CfD + RO support cost
+    effective_price = summary.average_price + total_levy
+    
+    if cfd_result or ro_result:
+        # Format delta string - put total first so Streamlit parses it for color determination
+        # This ensures color is based on combined CfD + RO, not just CfD
+        # Hide RO if it's 0 or effectively 0
+        has_cfd = cfd_result and abs(cfd_levy) > 0.01
+        has_ro = ro_result and abs(ro_levy) > 0.01
+        
+        if has_cfd and has_ro:
+            # Both CfD and RO (both non-zero)
+            delta_str = f"{total_levy:+.1f} (CfD {cfd_levy:+.1f} + RO {ro_levy:+.1f})"
+        elif has_cfd:
+            # Only CfD (RO is 0 or missing)
+            delta_str = f"{cfd_levy:+.1f} CfD"
+        elif has_ro:
+            # Only RO (CfD is 0 or missing)
+            delta_str = f"{ro_levy:+.1f} RO"
+        else:
+            # Both are 0 or missing
+            delta_str = f"{total_levy:+.1f} Support"
     else:
-        effective_price = summary.average_price
         delta_str = None
+    
+    # Color is based on total_levy (CfD + RO combined), not just CfD
+    # Red when positive (net cost to consumers), green when negative (net saving/clawback)
     st.metric(
-        "Consumer Price",
+        "Wholesale + Support",
         f"£{effective_price:.1f}/MWh",
         delta=delta_str,
-        delta_color="inverse",  # Red when positive (cost), green when negative (saving)
-        help="Effective price to consumers = Wholesale + CfD levy. This is what consumers actually pay per MWh."
+        delta_color="inverse",  # Red when total_levy positive (cost), green when negative (saving)
+        help="Wholesale price + CfD levy + RO levy. Note: This does not include capacity markets, balancing costs, network charges, or other components of the final consumer price."
     )
 
 with col3:
@@ -874,7 +1032,7 @@ with col6:
     st.metric(
         "Curtailment",
         f"{summary.total_curtailment_mwh/1000:.1f} GWh",
-        help="Renewable energy that couldn't be dispatched"
+        help="Economic curtailment only (RE supply > demand). Real-world curtailment is higher due to network constraints (Scotland-England bottlenecks). The model does not capture constraint-based curtailment."
     )
 
 st.divider()
@@ -1669,11 +1827,14 @@ with tab3:
     st.plotly_chart(fig2, use_container_width=True)
 
 with tab4:
-    st.subheader("CfD Economics")
+    st.subheader("Renewable Energy Support Schemes")
     st.markdown("""
     **Contracts for Difference (CfDs)** guarantee renewable generators a fixed 'strike price'.
     When wholesale prices fall below the strike price, consumers pay the difference via LCCC.
     When wholesale prices are above the strike price, generators pay back the difference.
+    
+    **Renewables Obligation (RO)** provides fixed ROC payments per MWh generated (always a subsidy, no clawback).
+    RO closed to new applicants in 2017, but existing generators continue to receive support until 2037.
     """)
 
     if cfd_result:
@@ -1769,6 +1930,95 @@ with tab4:
                 st.caption("Positive = consumers pay subsidy; Negative = clawback to consumers")
 
         st.divider()
+        
+        # RO metrics
+        if ro_result:
+            st.subheader("Renewables Obligation (RO) Costs")
+            ro_col1, ro_col2, ro_col3, ro_col4 = st.columns(4)
+            
+            with ro_col1:
+                st.metric(
+                    "Total RO Payments",
+                    f"£{ro_result.total_ro_payments/1e6:.1f}M",
+                    help="Total RO subsidy payments (always positive - RO has no clawback)"
+                )
+            
+            with ro_col2:
+                st.metric(
+                    "RO Subsidy per MWh",
+                    f"£{ro_result.subsidy_per_mwh_consumed:.2f}",
+                    help="RO levy per MWh of electricity consumed"
+                )
+            
+            with ro_col3:
+                ro_annual_household = ro_result.annual_household_cost
+                st.metric(
+                    "Annual Household Cost",
+                    f"£{ro_annual_household:.0f}",
+                    help="Estimated annual RO cost per household (2,700 kWh/year)"
+                )
+            
+            with ro_col4:
+                ro_coverage = ro_state.estimated_re_coverage(
+                    custom_capacities['solar'],
+                    custom_capacities['onshore_wind'],
+                    custom_capacities['offshore_wind']
+                ) if ro_state else 0.0
+                st.metric(
+                    "RO Coverage",
+                    f"{ro_coverage*100:.1f}%",
+                    help="Percentage of RE generation covered by RO"
+                )
+            
+            st.divider()
+            
+            # Combined CfD + RO metrics
+            st.subheader("Combined Support Costs (CfD + RO)")
+            combined_col1, combined_col2, combined_col3 = st.columns(3)
+            
+            total_subsidy = cfd_result.net_cfd_cost + ro_result.total_ro_payments
+            total_subsidy_per_mwh = cfd_result.subsidy_per_mwh_consumed + ro_result.subsidy_per_mwh_consumed
+            total_annual_household = cfd_result.annual_household_cost + ro_result.annual_household_cost
+            
+            with combined_col1:
+                st.metric(
+                    "Total Support Cost",
+                    f"£{total_subsidy/1e6:.1f}M",
+                    help="Combined CfD + RO costs to consumers"
+                )
+            
+            with combined_col2:
+                st.metric(
+                    "Total Subsidy per MWh",
+                    f"£{total_subsidy_per_mwh:.2f}",
+                    help="Combined CfD + RO levy per MWh consumed"
+                )
+            
+            with combined_col3:
+                st.metric(
+                    "Total Annual Household Cost",
+                    f"£{total_annual_household:.0f}",
+                    help="Combined CfD + RO cost per household per year"
+                )
+            
+            # Combined coverage
+            if ro_state:
+                # Get CfD coverage
+                if use_portfolio_strikes and portfolio_state:
+                    cfd_coverage_pct = portfolio_state.estimated_re_coverage(
+                        custom_capacities['solar'],
+                        custom_capacities['onshore_wind'],
+                        custom_capacities['offshore_wind']
+                    )
+                else:
+                    cfd_coverage_pct = cfd_coverage  # Use the slider value
+                
+                # Note: Coverage can overlap (some generators have both), so combined may be less than sum
+                # For display, we show the sum but note it may overstate if there's overlap
+                combined_coverage = min(1.0, cfd_coverage_pct + ro_coverage)
+                st.info(f"**Combined Coverage**: {cfd_coverage_pct*100:.1f}% CfD + {ro_coverage*100:.1f}% RO = {combined_coverage*100:.1f}% of RE generation supported (note: some overlap possible)")
+            
+            st.divider()
 
         # CfD Cost Dynamics Explanation
         st.subheader("CfD Cost Dynamics")
@@ -1810,6 +2060,196 @@ with tab4:
 
                 This means generators are paying back consumers through CfD clawback payments.
                 """)
+
+        st.divider()
+
+        # Portfolio Evolution Over Time
+        st.subheader("CfD Portfolio Evolution (2025-2050)")
+        st.markdown(f"""
+        Shows how the UK CfD portfolio evolves as old contracts expire and new ones come online.
+        **Current selection: {simulation_year}** | Includes projected AR7/AR8
+        """)
+
+        # Calculate portfolio evolution
+        evolution_years = list(range(2025, 2051))
+        evolution_data = [historical_portfolio.get_portfolio_state(y) for y in evolution_years]
+
+        # Create two charts side by side
+        col_evo1, col_evo2 = st.columns(2)
+
+        with col_evo1:
+            # Stacked area chart of capacity by AR
+            fig_capacity = go.Figure()
+
+            # Get all unique ARs across all years
+            all_ars = set()
+            for state in evolution_data:
+                all_ars.update(state.projects_by_ar.keys())
+
+            # Sort ARs for consistent ordering
+            ar_order = ['Investment Contract', 'Allocation Round 1', 'Allocation Round 2',
+                       'Allocation Round 3', 'Allocation Round 4', 'Allocation Round 5',
+                       'Allocation Round 6', 'Allocation Round 7', 'Allocation Round 8', 'Bespoke']
+            sorted_ars = [ar for ar in ar_order if ar in all_ars]
+
+            # Color mapping for ARs
+            ar_colors = {
+                'Investment Contract': '#8B4513',
+                'Allocation Round 1': '#FF6347',
+                'Allocation Round 2': '#FF8C00',
+                'Allocation Round 3': '#FFD700',
+                'Allocation Round 4': '#32CD32',
+                'Allocation Round 5': '#4169E1',
+                'Allocation Round 6': '#9370DB',
+                'Allocation Round 7': '#FF69B4',
+                'Allocation Round 8': '#00CED1',
+                'Bespoke': '#808080',
+            }
+
+            for ar in sorted_ars:
+                capacities = []
+                for state in evolution_data:
+                    cap = state.projects_by_ar.get(ar, {}).get('capacity_gw', 0)
+                    capacities.append(cap)
+
+                fig_capacity.add_trace(go.Scatter(
+                    x=evolution_years,
+                    y=capacities,
+                    name=ar.replace('Allocation Round ', 'AR'),
+                    mode='lines',
+                    stackgroup='capacity',
+                    line=dict(width=0),
+                    fillcolor=ar_colors.get(ar, '#A9A9A9'),
+                    hovertemplate=f"{ar}<br>Year: %{{x}}<br>Capacity: %{{y:.1f}} GW<extra></extra>"
+                ))
+
+            # Add vertical line for selected year
+            fig_capacity.add_vline(
+                x=simulation_year,
+                line_dash="dash",
+                line_color="black",
+                annotation_text=f"{simulation_year}"
+            )
+
+            fig_capacity.update_layout(
+                title="CfD Capacity by Allocation Round",
+                xaxis_title="Year",
+                yaxis_title="Capacity (GW)",
+                height=400,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                hovermode='x unified'
+            )
+            st.plotly_chart(fig_capacity, use_container_width=True)
+
+        with col_evo2:
+            # Line chart of weighted average strike price
+            avg_strikes = [state.avg_strike_all for state in evolution_data]
+            # Get current capacity settings for demand coverage calculation
+            solar_cap = st.session_state.get('solar_cap', 15.5)
+            onshore_cap = st.session_state.get('onshore_wind_cap', 14.8)
+            offshore_cap = st.session_state.get('offshore_wind_cap', 14.7)
+            nuclear_cap = st.session_state.get('nuclear_cap', 6.5)
+            demand_coverage = [state.estimated_demand_coverage(solar_cap, onshore_cap, offshore_cap, nuclear_cap) * 100 
+                              for state in evolution_data]
+
+            fig_strike = make_subplots(specs=[[{"secondary_y": True}]])
+
+            fig_strike.add_trace(
+                go.Scatter(
+                    x=evolution_years,
+                    y=avg_strikes,
+                    name='Avg Strike Price',
+                    mode='lines+markers',
+                    line=dict(color='#FF6347', width=2),
+                    hovertemplate="Year: %{x}<br>Avg Strike: £%{y:.0f}/MWh<extra></extra>"
+                ),
+                secondary_y=False
+            )
+
+            fig_strike.add_trace(
+                go.Scatter(
+                    x=evolution_years,
+                    y=demand_coverage,
+                    name='Demand Coverage',
+                    mode='lines+markers',
+                    line=dict(color='#4169E1', width=2, dash='dot'),
+                    hovertemplate="Year: %{x}<br>Coverage: %{y:.0f}%<extra></extra>"
+                ),
+                secondary_y=True
+            )
+
+            # Add vertical line for selected year
+            fig_strike.add_vline(
+                x=simulation_year,
+                line_dash="dash",
+                line_color="black",
+                annotation_text=f"{simulation_year}"
+            )
+
+            fig_strike.update_layout(
+                title="Strike Price & Coverage Evolution",
+                xaxis_title="Year",
+                height=400,
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                hovermode='x unified'
+            )
+            fig_strike.update_yaxes(title_text="Avg Strike Price (£/MWh)", secondary_y=False)
+            fig_strike.update_yaxes(title_text="Demand Coverage (%)", secondary_y=True)
+
+            st.plotly_chart(fig_strike, use_container_width=True)
+
+        # Portfolio breakdown for selected year
+        st.markdown(f"### {simulation_year} Portfolio Breakdown")
+
+        col_tech, col_ar = st.columns(2)
+
+        with col_tech:
+            # Technology breakdown - use user's capacity to calculate actual CfD capacity
+            solar_cap = st.session_state.get('solar_cap', 15.0)
+            onshore_cap = st.session_state.get('onshore_wind_cap', 15.0)
+            offshore_cap = st.session_state.get('offshore_wind_cap', 15.0)
+            nuclear_cap = st.session_state.get('nuclear_cap', 6.5)
+            cfd_capacities = portfolio_state.get_cfd_capacity_gw(solar_cap, onshore_cap, offshore_cap, nuclear_cap)
+            
+            tech_data = {
+                'Technology': ['Offshore Wind', 'Onshore Wind', 'Solar PV', 'Nuclear', 'Other'],
+                'Capacity (GW)': [
+                    cfd_capacities['offshore_wind_gw'],
+                    cfd_capacities['onshore_wind_gw'],
+                    cfd_capacities['solar_gw'],
+                    cfd_capacities['nuclear_gw'],
+                    cfd_capacities['other_gw']
+                ],
+                'Coverage (%)': [
+                    f"{portfolio_state.offshore_wind_coverage*100:.0f}%" if portfolio_state.offshore_wind_coverage > 0 else "-",
+                    f"{portfolio_state.onshore_wind_coverage*100:.0f}%" if portfolio_state.onshore_wind_coverage > 0 else "-",
+                    f"{portfolio_state.solar_coverage*100:.0f}%" if portfolio_state.solar_coverage > 0 else "-",
+                    f"{portfolio_state.nuclear_coverage*100:.0f}%" if portfolio_state.nuclear_coverage > 0 else "-",
+                    "-"   # Other doesn't use percentages
+                ],
+                'Avg Strike (£/MWh)': [
+                    f"£{portfolio_state.avg_strike_offshore:.0f}" if cfd_capacities['offshore_wind_gw'] > 0 else "-",
+                    f"£{portfolio_state.avg_strike_onshore:.0f}" if cfd_capacities['onshore_wind_gw'] > 0 else "-",
+                    f"£{portfolio_state.avg_strike_solar:.0f}" if cfd_capacities['solar_gw'] > 0 else "-",
+                    f"£{portfolio_state.avg_strike_nuclear:.0f}" if cfd_capacities['nuclear_gw'] > 0 else "-",
+                    "-"
+                ]
+            }
+            st.dataframe(pd.DataFrame(tech_data), use_container_width=True, hide_index=True)
+
+        with col_ar:
+            # AR breakdown
+            ar_breakdown = []
+            for ar, data in sorted(portfolio_state.projects_by_ar.items()):
+                ar_breakdown.append({
+                    'Allocation Round': ar.replace('Allocation Round ', 'AR'),
+                    'Projects': data['count'],
+                    'Capacity (GW)': f"{data['capacity_gw']:.2f}"
+                })
+            if ar_breakdown:
+                st.dataframe(pd.DataFrame(ar_breakdown), use_container_width=True, hide_index=True)
+            else:
+                st.info("No active CfD contracts in this year")
 
         st.divider()
 
@@ -1885,6 +2325,10 @@ with tab5:
         ]
     }
     st.dataframe(pd.DataFrame(summary_data), use_container_width=True, hide_index=True)
+    
+    # Note about curtailment limitation
+    if summary.total_curtailment_mwh == 0:
+        st.info("ℹ️ **Curtailment Note**: The model only captures economic curtailment (when RE supply > demand). Real-world curtailment is significantly higher due to network constraints (especially Scotland-England transmission bottlenecks) that the model does not simulate. Actual UK curtailment in 2024/2025 was several TWh annually.")
     
     # Scenario parameters
     st.markdown("### Scenario Parameters")
