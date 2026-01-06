@@ -114,7 +114,7 @@ This model is a **simplified representation** and does not include several impor
 
 ### ⚠️ Critical Missing Elements
 
-**CfD Strike Price Assumptions**: The model's default CfD strike prices (£58-71/MWh) reflect Allocation Round 6 (2024) prices for new projects. However, existing renewable energy capacity has much higher strike prices from earlier allocation rounds. The weighted average of active CfDs in 2025 was approximately £151/MWh. This means the model may **understate CfD costs** for scenarios representing the current UK system, where older, more expensive contracts still dominate. Users can adjust strike prices in the visualiser to explore different contract mixes.
+**CfD Strike Price Assumptions**: The model uses a portfolio-based approach that reflects the weighted average strike prices of all active CfD contracts in a given year. For 2025, the weighted average strike prices are approximately £69/MWh (solar), £121/MWh (onshore wind), and £149/MWh (offshore wind), with an overall average of £147/MWh. This accounts for the mix of older, more expensive contracts from early allocation rounds (AR1-AR3) and newer, cheaper contracts from recent rounds (AR4-AR6). The model defaults to "Portfolio (Historical)" mode, which uses these weighted averages. Users can switch to "Manual" mode to explore scenarios with different strike price assumptions, such as a system dominated by newer AR6 contracts (£47-59/MWh) or older contracts (£80-140/MWh).
 
 **Curtailment Costs**: The model tracks curtailment volume but not costs. In reality, curtailed generators (especially older Renewables Obligation farms) receive compensation payments, estimated at ~£3bn/year at peak. This is not modelled because curtailment compensation varies, and is sometimes part of CfD sometimes not. This means the model may significantly **understate costs** in high-RE scenarios where renewables are generating above demand.
 
@@ -153,7 +153,7 @@ This model is a **simplified representation** and does not include several impor
 ## Data Sources & References
 
 - **Capacity data**: BEIS/DESNZ Energy Statistics 2024
-- **CfD strike prices**: Low Carbon Contracts Company (LCCC). Default values reflect Allocation Round 6 (2024) prices for new projects. Historical allocation round prices are available in the visualiser.
+- **CfD strike prices**: Low Carbon Contracts Company (LCCC). The model uses portfolio-based weighted average strike prices that reflect the mix of active contracts from all allocation rounds. For 2025, this produces averages of £69/MWh (solar), £121/MWh (onshore wind), and £149/MWh (offshore wind). Users can view historical allocation round prices and switch to manual strike price mode in the visualiser.
 - **Capacity factors**: BEIS historical averages (Solar ~11%, Onshore ~27%, Offshore ~40%)
 - **Gas costs**: Calibrated to £73/MWh wholesale price for 2025 validation. See VALIDATION_2025.md for calibration details.
 - **Scenario presets**: NESO Clean Power 2030, UK Government targets, GlobalData projections
